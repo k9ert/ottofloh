@@ -2,6 +2,7 @@ from pykml import parser
 from zipfile import ZipFile, BadZipFile
 import os
 import shutil
+from lxml import etree
 
 extracted = False
 kml_file_path = ""
@@ -37,33 +38,41 @@ def process_input_file(file_path):
 def parse_kml_coordinates():
     with open(kml_file_path, 'rb') as kml_file:
         doc = parser.parse(kml_file).getroot()
-        # Implement namespace handling if needed
         coordinates_with_styles = []
-        print("yeah")
-        print(str(doc.Document.name.text))
-        print(str(doc.Document.Placemark.name.text))
-        print("iterating ...")
-        for placemark in doc.Document.Placemark:
-            name = placemark.name.text
-            coord = placemark.Point.coordinates.text.strip().split(',')
-            styleUrl = placemark.styleUrl.text  # Extract the styleUrl.
-            coordinates_with_styles.append((coord[1], coord[0], styleUrl))  # lat, lon, styleUrl
-    return coordinates_with_styles
+        
+        # Find all Placemarks using xpath with namespace
+        ns = {'kml': 'http://www.opengis.net/kml/2.2'}
+        placemarks = doc.xpath('.//kml:Placemark', namespaces=ns)
+        
+        for placemark in placemarks:
+            try:
+                name = placemark.xpath('./kml:name/text()', namespaces=ns)[0]
+                coords = placemark.xpath('.//kml:coordinates/text()', namespaces=ns)[0].strip().split(',')
+                style_url = placemark.xpath('./kml:styleUrl/text()', namespaces=ns)[0]
+                coordinates_with_styles.append((coords[1], coords[0], style_url))  # lat, lon, styleUrl
+            except (IndexError, AttributeError) as e:
+                print(f"Warning: Skipping placemark due to missing data: {e}")
+                continue
+                
+        return coordinates_with_styles
 
 def parse_kml_addresses():
     with open(kml_file_path, 'rb') as kml_file:
         doc = parser.parse(kml_file).getroot()
-        # Implement namespace handling if needed
         addresses = []
-        print("yeah")
-        print(str(doc.Document.name.text))
-        print(str(doc.Document.Placemark.name.text))
-        print("iterating ...")
-        for placemark in doc.Document.Placemark:
-            name = placemark.name.text
-            # Extract coordinates and any other necessary details
-            coord = placemark.Point.coordinates.text.strip().split(',')
-            addresses.append(name)
+        
+        # Find all Placemarks using xpath with namespace
+        ns = {'kml': 'http://www.opengis.net/kml/2.2'}
+        placemarks = doc.xpath('.//kml:Placemark', namespaces=ns)
+        
+        for placemark in placemarks:
+            try:
+                name = placemark.xpath('./kml:name/text()', namespaces=ns)[0]
+                addresses.append(name)
+            except (IndexError, AttributeError) as e:
+                print(f"Warning: Skipping placemark due to missing data: {e}")
+                continue
+                
         return addresses
     
 init()
