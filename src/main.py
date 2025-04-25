@@ -26,7 +26,7 @@ def generate_map_image(center, zoom, api_key, locations_with_styles):
         bottom = image_height * 2 - 70
         image = image.crop((left, top, right, bottom))
         image.save('build/map.png')
-        print("Map image saved.")
+        print("Map image saved. ")
     else:
         print("Failed to retrieve the map image.")
     return 'build/map.png'
