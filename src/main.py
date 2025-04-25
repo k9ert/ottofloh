@@ -70,7 +70,7 @@ def create_pdf(title, short_link, map_image_path, addresses):
     c.drawString(90, 770, title)
     c.setFont("Helvetica-Bold", 10)
     #subtitle
-    c.drawString(90, 750, "Samstag, 08. Juni 2024, 10:00 - 14:00 Uhr")
+    c.drawString(90, 750, "Samstag, 24. Mai 2025, 10:00 - 14:00 Uhr")
     c.setFont("Helvetica", 10)
     c.drawString(90, 730, "Eine Benefizveranstaltung zugunsten des CRP-Bangladesch")
     c.drawString(90, 710, "www.crp-bangladesh.org")
@@ -102,8 +102,8 @@ os.makedirs("build", exist_ok=True)
 image_height = 440
 image_width = 640
 
-short_link= "bit.ly/3VWv1II"
-title="Ottobrunner Hofflohmarkt 2024"
+short_link = "bit.ly/4j3T2Xh"
+title = "Ottobrunner Hofflohmarkt 2025"
 kmz_file="data.kmz"
 coordinates = parse_kml_coordinates()
 addresses = parse_kml_addresses()
