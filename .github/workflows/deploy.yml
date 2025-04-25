@@ -21,8 +21,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: Download KMZ file
+      - name: Download KML file
         run: |
+          mkdir -p build/kmz_content
           curl -L "https://www.google.com/maps/d/u/0/kml?mid=1MiczwI1dFKnqSY3a-O5kofK6KjegNe8&forcekml=1" -o data.kmz
           
       - name: Create secrets.yaml
@@ -31,7 +32,6 @@ jobs:
           
       - name: Generate PDF
         run: |
-          mkdir -p build
           python src/main.py
           mkdir -p assets
           cp "build/Ottobrunner Hofflohmarkt 2025.pdf" assets/
