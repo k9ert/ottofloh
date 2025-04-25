@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Download KMZ file
+        run: |
+          curl -L "https://www.google.com/maps/d/u/0/kml?mid=1MiczwI1dFKnqSY3a-O5kofK6KjegNe8&forcekml=1" -o data.kmz
+          
+      - name: Create secrets.yaml
+        run: |
+          echo "api_key: ${{ secrets.GOOGLE_MAPS_API_KEY }}" > secrets.yaml
+          
+      - name: Generate PDF
+        run: |
+          mkdir -p build
+          python src/main.py
+          mkdir -p assets
+          cp "build/Ottobrunner Hofflohmarkt 2025.pdf" assets/
+          
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.4
+        with:
+          branch: gh-pages
+          folder: .
