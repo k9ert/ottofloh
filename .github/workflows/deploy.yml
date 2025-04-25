@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'kmz.hash'  # Ignore changes to hash file
+      - 'assets/**'  # Ignore changes to assets directory
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
