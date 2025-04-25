@@ -1,12 +1,15 @@
 name: Deploy to GitHub Pages
 
 on:
+  schedule:
+    - cron: '0 */6 * * *'  # Run every 6 hours
   push:
     branches:
       - master
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  build-and-deploy:
+  check-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -21,23 +24,52 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: Download KML file
+      - name: Download and check KMZ file
+        id: kmz-check
         run: |
+          KMZ_URL="https://www.google.com/maps/d/u/0/kml?mid=1MiczwI1dFKnqSY3a-O5kofK6KjegNe8&forcekml=1"
           mkdir -p build/kmz_content
-          curl -L "https://www.google.com/maps/d/u/0/kml?mid=1MiczwI1dFKnqSY3a-O5kofK6KjegNe8&forcekml=1" -o data.kmz
+          
+          # Download current KMZ
+          curl -L "$KMZ_URL" -o data.kmz
+          
+          # Calculate new hash
+          NEW_HASH=$(md5sum data.kmz | awk '{ print $1 }')
+          echo "NEW_HASH=$NEW_HASH" >> $GITHUB_ENV
+          
+          # Try to get old hash from gh-pages branch
+          git fetch origin gh-pages || true
+          OLD_HASH=""
+          if git show origin/gh-pages:kmz.hash > /dev/null 2>&1; then
+            OLD_HASH=$(git show origin/gh-pages:kmz.hash)
+          fi
+          
+          # Compare hashes
+          if [ "$OLD_HASH" != "$NEW_HASH" ]; then
+            echo "KMZ file has changed, triggering rebuild"
+            echo "::set-output name=changed::true"
+          else
+            echo "KMZ file unchanged, skipping rebuild"
+            echo "::set-output name=changed::false"
+          fi
           
       - name: Create secrets.yaml
+        if: steps.kmz-check.outputs.changed == 'true'
         run: |
           echo "api_key: ${{ secrets.GOOGLE_MAPS_API_KEY }}" > secrets.yaml
           
       - name: Generate PDF
+        if: steps.kmz-check.outputs.changed == 'true'
         run: |
           python src/main.py
           mkdir -p assets
           cp "build/Ottobrunner Hofflohmarkt 2025.pdf" assets/
+          echo "$NEW_HASH" > kmz.hash
           
       - name: Deploy to GitHub Pages
+        if: steps.kmz-check.outputs.changed == 'true'
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
           branch: gh-pages
           folder: .
+          token: ${{ secrets.GITHUB_TOKEN }}
