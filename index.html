@@ -36,6 +36,72 @@
         .section {
             margin: 30px 0;
         }
+        .carousel {
+            max-width: 800px;
+            position: relative;
+            margin: 40px auto;
+            overflow: hidden;
+        }
+
+        .carousel-container {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .carousel-slide {
+            min-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .carousel-slide img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .carousel-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 50%;
+            font-size: 18px;
+        }
+
+        .carousel-button:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .carousel-button.prev {
+            left: 10px;
+        }
+
+        .carousel-button.next {
+            right: 10px;
+        }
+
+        .carousel-dots {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            background: #333;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +127,67 @@
             </a>
             <p>Übersichtliche Druckversion mit Adressliste und Karte</p>
         </div>
+
+        <div class="section">
+            <h3>Impressionen vom letzten Jahr:</h3>
+            <div class="carousel">
+                <div class="carousel-container" id="carousel-container">
+                    <!-- Images will be inserted here by JavaScript -->
+                </div>
+                <button class="carousel-button prev">❮</button>
+                <button class="carousel-button next">❯</button>
+                <div class="carousel-dots" id="carousel-dots"></div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('carousel-container');
+            const dotsContainer = document.getElementById('carousel-dots');
+            let currentSlide = 0;
+
+            // List of images (you'll need to add your actual image paths)
+            const images = [
+                'photos/image1.png',
+                'photos/image2.png',
+                // Add more images as needed
+            ];
+
+            // Create slides and dots
+            images.forEach((img, index) => {
+                const slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+                slide.innerHTML = `<img src="${img}" alt="Flohmarkt Impression ${index + 1}">`;
+                container.appendChild(slide);
+
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                if (index === 0) dot.classList.add('active');
+                dot.addEventListener('click', () => goToSlide(index));
+                dotsContainer.appendChild(dot);
+            });
+
+            function updateSlidePosition() {
+                container.style.transform = `translateX(-${currentSlide * 100}%)`;
+                document.querySelectorAll('.dot').forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentSlide);
+                });
+            }
+
+            function goToSlide(n) {
+                currentSlide = n;
+                if (currentSlide >= images.length) currentSlide = 0;
+                if (currentSlide < 0) currentSlide = images.length - 1;
+                updateSlidePosition();
+            }
+
+            document.querySelector('.prev').addEventListener('click', () => goToSlide(currentSlide - 1));
+            document.querySelector('.next').addEventListener('click', () => goToSlide(currentSlide + 1));
+
+            // Auto advance slides every 5 seconds
+            setInterval(() => goToSlide(currentSlide + 1), 5000);
+        });
+    </script>
 </body>
 </html>
