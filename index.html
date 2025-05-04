@@ -307,8 +307,43 @@
             }
         }
     </style>
-    <!-- Add Nostr tools library -->
-    <script src="https://unpkg.com/nostr-tools@1.12.0/lib/nostr.bundle.js"></script>
+    <!-- Add Nostr tools library (specific version) -->
+    <script>
+        // Create a global object to hold the Nostr tools
+        window.nostrTools = {};
+    </script>
+    <!-- Use a CDN that provides a specific version known to work -->
+    <script src="https://cdn.jsdelivr.net/npm/nostr-tools@1.10.1/lib/nostr.bundle.js"></script>
+    <!-- Add a direct script for WebSocket polyfill if needed -->
+    <script>
+        // Ensure WebSocket is available
+        if (typeof WebSocket === 'undefined') {
+            console.error("WebSocket is not defined in this environment");
+        } else {
+            console.log("WebSocket is available");
+        }
+
+        // Copy the library functions to our global object
+        if (window.NostrTools) {
+            console.log("NostrTools loaded successfully");
+            for (const key in window.NostrTools) {
+                window.nostrTools[key] = window.NostrTools[key];
+            }
+
+            // Log available functions for debugging
+            console.log("Available NostrTools functions:", Object.keys(window.NostrTools));
+        } else {
+            console.error("NostrTools not loaded correctly");
+        }
+
+        // Define a global function to check if the library is ready
+        window.isNostrReady = function() {
+            return window.NostrTools &&
+                   typeof window.NostrTools.getPublicKey === 'function' &&
+                   typeof window.NostrTools.relayInit === 'function';
+        };
+    </script>
+    <script src="nostr-chat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -420,226 +455,6 @@
 
             // Auto advance slides every 5 seconds
             setInterval(() => goToSlide(currentSlide + 1), 5000);
-
-            // Nostr Chat Implementation
-            const relays = [
-                'wss://relay.damus.io',
-                'wss://relay.nostr.band',
-                'wss://nostr.mutinywallet.com'
-            ];
-
-            // Chat channel identifier (using a specific tag for this event)
-            const CHANNEL_ID = 'ottobrunner-hofflohmarkt-2025';
-
-            let userPrivateKey = null;
-            let userPublicKey = null;
-            let pool = null;
-
-            // DOM Elements
-            const loginContainer = document.getElementById('nostr-login-container');
-            const chatInterface = document.getElementById('nostr-chat-interface');
-            const chatContainer = document.getElementById('chat-container');
-            const chatInput = document.getElementById('chat-input');
-            const sendButton = document.getElementById('chat-send-button');
-            const generateKeyButton = document.getElementById('generate-key-button');
-            const loginExtensionButton = document.getElementById('login-extension-button');
-
-            // Check if we have a saved key in localStorage
-            function checkForSavedKey() {
-                const savedKey = localStorage.getItem('nostr_private_key');
-                if (savedKey) {
-                    userPrivateKey = savedKey;
-                    userPublicKey = window.NostrTools.getPublicKey(hexToBytes(savedKey));
-                    showChatInterface();
-                    initNostrConnection();
-                }
-            }
-
-            // Helper functions for hex conversion
-            function bytesToHex(bytes) {
-                return Array.from(bytes)
-                    .map(b => b.toString(16).padStart(2, '0'))
-                    .join('');
-            }
-
-            function hexToBytes(hex) {
-                const bytes = new Uint8Array(hex.length / 2);
-                for (let i = 0; i < hex.length; i += 2) {
-                    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
-                }
-                return bytes;
-            }
-
-            // Generate a new key pair
-            generateKeyButton.addEventListener('click', () => {
-                const secretKey = window.NostrTools.generateSecretKey();
-                userPrivateKey = bytesToHex(secretKey);
-                userPublicKey = window.NostrTools.getPublicKey(secretKey);
-
-                // Save to localStorage
-                localStorage.setItem('nostr_private_key', userPrivateKey);
-
-                showChatInterface();
-                initNostrConnection();
-            });
-
-            // Login with extension (NIP-07)
-            loginExtensionButton.addEventListener('click', async () => {
-                if (window.nostr) {
-                    try {
-                        userPublicKey = await window.nostr.getPublicKey();
-                        showChatInterface();
-                        initNostrConnection();
-                    } catch (error) {
-                        console.error('Error connecting to Nostr extension:', error);
-                        alert('Fehler beim Verbinden mit der Nostr-Erweiterung. Bitte versuchen Sie es erneut oder erstellen Sie einen neuen Schlüssel.');
-                    }
-                } else {
-                    alert('Keine Nostr-Erweiterung gefunden. Bitte installieren Sie eine Nostr-Erweiterung oder erstellen Sie einen neuen Schlüssel.');
-                }
-            });
-
-            // Show chat interface and hide login
-            function showChatInterface() {
-                loginContainer.style.display = 'none';
-                chatInterface.style.display = 'block';
-            }
-
-            // Initialize Nostr connection
-            function initNostrConnection() {
-                // Create a SimplePool instance
-                if (window.NostrTools.SimplePool) {
-                    pool = new window.NostrTools.SimplePool();
-                } else if (window.NostrTools.Pool) {
-                    // Fallback for different versions of the library
-                    pool = new window.NostrTools.Pool();
-                } else {
-                    console.error("Could not find SimplePool or Pool in NostrTools");
-                    alert("Fehler beim Initialisieren des Nostr-Clients. Bitte laden Sie die Seite neu.");
-                    return;
-                }
-
-                // Subscribe to channel messages
-                pool.subscribe(
-                    relays,
-                    [
-                        {
-                            kinds: [1], // Regular notes
-                            '#t': [CHANNEL_ID] // Tag for our channel
-                        }
-                    ],
-                    {
-                        onevent(event) {
-                            displayMessage(event);
-                        }
-                    }
-                );
-
-                // Send a welcome message
-                sendMessage('Hallo! Ich bin dem Ottobrunner Hofflohmarkt Chat beigetreten.');
-            }
-
-            // Display a message in the chat
-            function displayMessage(event) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'chat-message';
-
-                // Check if this is our own message
-                if (event.pubkey === userPublicKey) {
-                    messageDiv.classList.add('self');
-                } else {
-                    messageDiv.classList.add('others');
-                }
-
-                // Create header with username (shortened pubkey) and timestamp
-                const header = document.createElement('div');
-                header.className = 'chat-header';
-
-                const username = document.createElement('span');
-                username.className = 'chat-username';
-                username.textContent = shortenPubkey(event.pubkey);
-
-                const timestamp = document.createElement('span');
-                timestamp.className = 'chat-timestamp';
-                timestamp.textContent = formatTimestamp(event.created_at);
-
-                header.appendChild(username);
-                header.appendChild(timestamp);
-
-                // Create message content
-                const content = document.createElement('div');
-                content.textContent = event.content;
-
-                // Add to message div
-                messageDiv.appendChild(header);
-                messageDiv.appendChild(content);
-
-                // Add to chat container and scroll to bottom
-                chatContainer.appendChild(messageDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-
-            // Send a message
-            async function sendMessage(content) {
-                if (!content.trim()) return;
-
-                try {
-                    // Create event
-                    const event = {
-                        kind: 1,
-                        created_at: Math.floor(Date.now() / 1000),
-                        tags: [['t', CHANNEL_ID]],
-                        content: content
-                    };
-
-                    let signedEvent;
-
-                    // Sign with extension or with our private key
-                    if (window.nostr && !userPrivateKey) {
-                        signedEvent = await window.nostr.signEvent(event);
-                    } else {
-                        signedEvent = window.NostrTools.finalizeEvent(
-                            event,
-                            hexToBytes(userPrivateKey)
-                        );
-                    }
-
-                    // Publish to relays
-                    await pool.publish(relays, signedEvent);
-
-                    // Clear input
-                    chatInput.value = '';
-                } catch (error) {
-                    console.error('Error sending message:', error);
-                    alert('Fehler beim Senden der Nachricht. Bitte versuchen Sie es erneut.');
-                }
-            }
-
-            // Send button click handler
-            sendButton.addEventListener('click', () => {
-                sendMessage(chatInput.value);
-            });
-
-            // Enter key to send
-            chatInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage(chatInput.value);
-                }
-            });
-
-            // Helper function to shorten pubkey for display
-            function shortenPubkey(pubkey) {
-                return pubkey.substring(0, 6) + '...' + pubkey.substring(pubkey.length - 4);
-            }
-
-            // Helper function to format timestamp
-            function formatTimestamp(timestamp) {
-                const date = new Date(timestamp * 1000);
-                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            }
-
-            // Check for saved key on page load
-            checkForSavedKey();
         });
     </script>
 </body>
