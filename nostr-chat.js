@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let userPublicKey = null;
     let relayPool = null;
     let processedEvents = new Set(); // Set to track processed event IDs for deduplication
-    let userHandle = null; // Store the user's handle name
 
     // Function to request profile information for a pubkey
     function requestProfileInfo(pubkey) {
@@ -750,24 +749,37 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60); // Current time minus 24 hours in seconds
 
-                // Limit the number of events to reduce load on the relay
-                const limit = 100; // Reasonable limit for messages
-
+                // Don't limit the number of events to make sure we get all messages
                 console.log("Starting subscription with delay to avoid relay spam protection");
+
+                // Flag to track if we've received any events
+                let receivedEvents = false;
+
+                // Display messages as they arrive but insert them in the correct position
                 relayPool.subscribe(
                     relays,
                     [
                         {
                             kinds: [1], // Regular notes
                             '#t': [CHANNEL_ID], // Tag for our channel
-                            since: oneDayAgo, // Only get messages from the last 24 hours
-                            limit: limit // Limit the number of events
+                            since: oneDayAgo // Only get messages from the last 24 hours
                         }
                     ],
                     {
                         onevent(event) {
-                            // Display events immediately as they arrive
-                            displayMessage(event);
+                            // Mark that we've received at least one event
+                            receivedEvents = true;
+
+                            // Log the event
+                            console.log("Received event:", {
+                                id: event.id,
+                                content: event.content.substring(0, 30) + "...",
+                                created_at: new Date(event.created_at * 1000).toLocaleString(),
+                                pubkey: event.pubkey
+                            });
+
+                            // Display the event immediately, but in the correct position
+                            displayMessageInOrder(event);
 
                             // If this is the first event, hide the loading indicator
                             if (isInitialLoad) {
@@ -779,11 +791,17 @@ document.addEventListener('DOMContentLoaded', function() {
                             // End of stored events
                             console.log("End of stored events");
 
-                            // Make sure loading indicator is hidden
-                            if (isInitialLoad) {
-                                isInitialLoad = false;
-                                hideLoadingIndicator();
+                            // If we didn't receive any events, hide the loading indicator
+                            if (!receivedEvents) {
+                                console.log("No events received, hiding loading indicator");
+                                if (isInitialLoad) {
+                                    isInitialLoad = false;
+                                    hideLoadingIndicator();
+                                }
                             }
+
+                            // Scroll to bottom to show newest messages
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
                         }
                     }
                 );
@@ -791,6 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // We only send kind=1 events as requested
             // Add a welcome message after the initial load is complete
+            let welcomeMessageAdded = false;
             const addWelcomeMessage = () => {
                 // Check if initial load is complete
                 if (isInitialLoad) {
@@ -799,6 +818,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(addWelcomeMessage, 500);
                     return;
                 }
+
+                // Check if we've already added a welcome message
+                if (welcomeMessageAdded) {
+                    console.log("Welcome message already added, skipping");
+                    return;
+                }
+
+                // Mark as added to prevent duplicates
+                welcomeMessageAdded = true;
 
                 // Add a welcome message to the chat locally without sending it to relays
                 console.log("Initial load complete, adding welcome message locally");
@@ -821,18 +849,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                // Create a local event for display only
+                // Create a local event for display only with a timestamp that ensures it appears at the end
                 const welcomeEvent = {
                     kind: 1,
-                    created_at: Math.floor(Date.now() / 1000),
+                    created_at: Math.floor(Date.now() / 1000) + 1, // Add 1 second to ensure it's the newest
                     pubkey: userPublicKey,
                     content: '... betritt den Chat.',
                     id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
                     tags: welcomeTags
                 };
 
-                // Display the welcome message locally
-                displayMessage(welcomeEvent);
+                // Display the welcome message locally in the correct position
+                displayMessageInOrder(welcomeEvent);
+
+                // Scroll to bottom to ensure the welcome message is visible
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }, 50);
             };
 
             // Start the welcome message process
@@ -844,13 +877,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Display a message in the chat
-    function displayMessage(event) {
+    // Display a message in the correct chronological order
+    function displayMessageInOrder(event) {
         // Skip if this is a local event without an ID
         if (!event.id) {
             console.log("Skipping event without ID:", event);
             return;
         }
+
+        // Log the event we're trying to display
+        console.log("Attempting to display event in order:", {
+            id: event.id,
+            content: event.content,
+            created_at: event.created_at,
+            pubkey: event.pubkey
+        });
 
         // Check if we've already processed this event to avoid duplicates
         if (event.id.startsWith('local-')) {
@@ -866,10 +907,20 @@ document.addEventListener('DOMContentLoaded', function() {
             processedEvents.add(event.id);
         }
 
+        // Create the message element
+        const messageDiv = createMessageElement(event);
+
+        // Find the correct position to insert the message based on timestamp
+        insertMessageInOrder(messageDiv, event.created_at);
+    }
+
+    // Create a message element without adding it to the DOM
+    function createMessageElement(event) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
         messageDiv.dataset.eventId = event.id; // Store event ID for reference
         messageDiv.dataset.pubkey = event.pubkey; // Store pubkey for profile updates
+        messageDiv.dataset.timestamp = event.created_at; // Store timestamp for ordering
 
         // Check if this is our own message
         if (event.pubkey === userPublicKey) {
@@ -916,8 +967,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (event.tags && Array.isArray(event.tags)) {
                 // Look for various tag types that might contain identity info
                 for (const tag of event.tags) {
-                    // Removed hardcoded handle name check
-
                     // NIP-05 identifier
                     if (tag[0] === 'nip05' && tag[1]) {
                         displayName = tag[1];
@@ -1009,9 +1058,50 @@ document.addEventListener('DOMContentLoaded', function() {
         messageDiv.appendChild(header);
         messageDiv.appendChild(content);
 
-        // Add to chat container and scroll to bottom
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+        return messageDiv;
+    }
+
+    // Insert a message element in the correct chronological order
+    function insertMessageInOrder(messageDiv, timestamp) {
+        // Get all existing message elements
+        const existingMessages = chatContainer.querySelectorAll('.chat-message');
+
+        // If there are no messages yet, just append
+        if (existingMessages.length === 0) {
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return;
+        }
+
+        // Find the correct position to insert the message
+        let inserted = false;
+        for (let i = 0; i < existingMessages.length; i++) {
+            const existingTimestamp = parseInt(existingMessages[i].dataset.timestamp || '0');
+
+            // If the new message is older than the current message, insert before it
+            if (timestamp < existingTimestamp) {
+                chatContainer.insertBefore(messageDiv, existingMessages[i]);
+                inserted = true;
+                break;
+            }
+        }
+
+        // If we didn't find a place to insert, append at the end
+        if (!inserted) {
+            chatContainer.appendChild(messageDiv);
+        }
+
+        // Scroll to bottom if we're already near the bottom
+        const isNearBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100;
+        if (isNearBottom) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+
+    // Display a message in the chat (legacy function for compatibility)
+    function displayMessage(event) {
+        // Just use the new function for all message display
+        displayMessageInOrder(event);
     }
 
     // Send a message
@@ -1024,11 +1114,31 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create event with basic tags
             const eventTags = [['t', CHANNEL_ID]];
 
-            // Add handle name tags only if we have a handle
-            if (userHandle) {
-                eventTags.push(['name', userHandle]);
-                eventTags.push(['display_name', userHandle]);
-                eventTags.push(['d', userHandle]);
+            // Add handle name tags from profile cache if available
+            if (window.profileCache && window.profileCache[userPublicKey]) {
+                const profile = window.profileCache[userPublicKey];
+
+                if (profile.name) {
+                    eventTags.push(['name', profile.name]);
+                }
+
+                if (profile.display_name) {
+                    eventTags.push(['display_name', profile.display_name]);
+                } else if (profile.displayName) {
+                    eventTags.push(['display_name', profile.displayName]);
+                }
+
+                // Add a default handle if we don't have one
+                if (!profile.name && !profile.display_name && !profile.displayName) {
+                    const defaultHandle = 'Benutzer';
+                    eventTags.push(['name', defaultHandle]);
+                    eventTags.push(['display_name', defaultHandle]);
+                }
+            } else {
+                // If no profile cache, add a default handle
+                const defaultHandle = 'Benutzer';
+                eventTags.push(['name', defaultHandle]);
+                eventTags.push(['display_name', defaultHandle]);
             }
 
             // Create the event
@@ -1301,8 +1411,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Log the local event for debugging
             console.log("Displaying local event with handle:", localEvent);
 
-            // Display the message with our local ID
-            displayMessage(localEvent);
+            // Display the message with our local ID in the correct position
+            displayMessageInOrder(localEvent);
 
             // Add the original event ID to the processed events set so when it comes back from the relay, it won't be displayed again
             if (signedEvent.id) {
