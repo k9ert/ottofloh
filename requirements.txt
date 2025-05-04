@@ -1,7 +1,0 @@
-reportlab
-pykml
-lxml
-Pillow
-requests
-qrcode
-pyyaml
