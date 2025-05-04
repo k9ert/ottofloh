@@ -751,15 +751,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error("relayPool.publish is not a function");
             }
 
-            // Display our own message immediately with a temporary ID
-            // We'll add it to the processed events set so when it comes back from the relay, it won't be displayed again
+            // Display our own message immediately
+            // Create a copy of the event with a special local ID to ensure it's displayed
+            const localEvent = { ...signedEvent };
+
+            // Change the ID to a local version to ensure it's displayed
+            localEvent.id = 'local-sent-' + (signedEvent.id || Date.now() + '-' + Math.random().toString(36).substring(2, 15));
+
+            // Display the message with our local ID
+            displayMessage(localEvent);
+
+            // Add the original event ID to the processed events set so when it comes back from the relay, it won't be displayed again
             if (signedEvent.id) {
                 processedEvents.add(signedEvent.id);
                 console.log("Added our message ID to processed events:", signedEvent.id);
             }
-
-            // Display the message
-            displayMessage(signedEvent);
 
             // Clear input
             chatInput.value = '';
