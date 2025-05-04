@@ -280,13 +280,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             // Publish event
                             console.log(`Publishing to ${url}`);
-                            const pub = relay.publish(event);
-                            promises.push(
-                                pub.then(
-                                    () => console.log(`Published to ${url} successfully`),
-                                    (err) => console.error(`Failed to publish to ${url}:`, err)
-                                )
-                            );
+                            try {
+                                // Try to publish and handle different return types
+                                const pub = relay.publish(event);
+
+                                // Check if pub is a Promise
+                                if (pub && typeof pub.then === 'function') {
+                                    promises.push(
+                                        pub.then(
+                                            () => console.log(`Published to ${url} successfully`),
+                                            (err) => console.error(`Failed to publish to ${url}:`, err)
+                                        )
+                                    );
+                                } else {
+                                    // If not a Promise, just log success
+                                    console.log(`Publication request sent to ${url}`);
+                                }
+                            } catch (pubError) {
+                                console.error(`Error during publish to ${url}:`, pubError);
+                            }
                         } catch (e) {
                             console.error(`Error publishing to relay ${url}:`, e);
                         }
@@ -452,7 +464,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (relayPool && typeof relayPool.publish === 'function') {
                 console.log("Publishing with relayPool.publish");
                 try {
-                    await relayPool.publish(relays, signedEvent);
+                    // Try to publish and handle different return types
+                    const pubResult = relayPool.publish(relays, signedEvent);
+
+                    // Check if pubResult is a Promise
+                    if (pubResult && typeof pubResult.then === 'function') {
+                        try {
+                            await pubResult;
+                            console.log("Published to relays successfully");
+                        } catch (awaitError) {
+                            console.error("Error awaiting publish result:", awaitError);
+                            // We'll still display the message locally even if publishing fails
+                        }
+                    } else {
+                        console.log("Publication request sent to relays");
+                    }
                 } catch (pubError) {
                     console.error("Error publishing with relayPool:", pubError);
                     // We'll still display the message locally even if publishing fails
