@@ -419,8 +419,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             );
 
-            // Add a welcome message to the chat locally without sending it to relays
-            setTimeout(() => {
+            // Send a profile event (kind=0) to help other clients recognize our handle name
+            setTimeout(async () => {
+                try {
+                    console.log("Sending profile event with handle name");
+
+                    // Create profile event
+                    const profileEvent = {
+                        kind: 0, // Profile metadata
+                        created_at: Math.floor(Date.now() / 1000),
+                        tags: [],
+                        content: JSON.stringify({
+                            name: "sattler",
+                            display_name: "sattler",
+                            displayName: "sattler",
+                            nip05: "sattler@ottobrunner-hofflohmarkt.de" // Optional: can be used for verification
+                        }),
+                        pubkey: userPublicKey
+                    };
+
+                    // Sign the profile event
+                    let signedProfileEvent;
+
+                    // Sign with extension or with our private key
+                    if (window.nostr && !userPrivateKey) {
+                        console.log("Signing profile with Nostr extension");
+                        try {
+                            signedProfileEvent = await window.nostr.signEvent(profileEvent);
+                        } catch (signError) {
+                            console.error("Error signing profile with extension:", signError);
+                        }
+                    } else {
+                        // Try different ways to sign based on available API
+                        try {
+                            if (window.finalizeEvent) {
+                                signedProfileEvent = window.finalizeEvent(
+                                    profileEvent,
+                                    hexToBytes(userPrivateKey)
+                                );
+                            } else if (window.signEvent) {
+                                signedProfileEvent = window.signEvent(
+                                    profileEvent,
+                                    userPrivateKey
+                                );
+                            } else if (window.NostrTools && typeof window.NostrTools.finalizeEvent === 'function') {
+                                signedProfileEvent = window.NostrTools.finalizeEvent(
+                                    profileEvent,
+                                    hexToBytes(userPrivateKey)
+                                );
+                            } else if (window.NostrTools && typeof window.NostrTools.signEvent === 'function') {
+                                signedProfileEvent = window.NostrTools.signEvent(
+                                    profileEvent,
+                                    userPrivateKey
+                                );
+                            } else if (window.nostrTools && typeof window.nostrTools.finalizeEvent === 'function') {
+                                signedProfileEvent = window.nostrTools.finalizeEvent(
+                                    profileEvent,
+                                    hexToBytes(userPrivateKey)
+                                );
+                            } else if (window.nostrTools && typeof window.nostrTools.signEvent === 'function') {
+                                signedProfileEvent = window.nostrTools.signEvent(
+                                    profileEvent,
+                                    userPrivateKey
+                                );
+                            }
+                        } catch (signError) {
+                            console.error("Error signing profile event:", signError);
+                        }
+                    }
+
+                    // Publish profile event if signing was successful
+                    if (signedProfileEvent) {
+                        console.log("Publishing profile event:", signedProfileEvent);
+                        try {
+                            await relayPool.publish(relays, signedProfileEvent);
+                            console.log("Profile event published successfully");
+                        } catch (pubError) {
+                            console.error("Error publishing profile event:", pubError);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error creating profile event:", error);
+                }
+
+                // Add a welcome message to the chat locally without sending it to relays
                 console.log("Adding welcome message locally");
 
                 // Create a local event for display only
@@ -430,7 +512,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     pubkey: userPublicKey,
                     content: 'Willkommen im Ottobrunner Hofflohmarkt Chat! Sie können jetzt Nachrichten senden und empfangen.',
                     id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
-                    tags: [['t', CHANNEL_ID]]
+                    tags: [
+                        ['t', CHANNEL_ID],
+                        ['name', 'sattler'],
+                        ['display_name', 'sattler']
+                    ]
                 };
 
                 // Display the welcome message locally
@@ -617,12 +703,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const event = {
                 kind: 1,
                 created_at: Math.floor(Date.now() / 1000),
-                tags: [['t', CHANNEL_ID]],
+                tags: [
+                    ['t', CHANNEL_ID],
+                    // Add handle name information that other clients can use
+                    ['name', 'sattler'],
+                    ['display_name', 'sattler'],
+                    ['d', 'sattler']
+                ],
                 content: content,
                 pubkey: userPublicKey // Add pubkey to the event
             };
 
-            console.log("Created event template:", event);
+            console.log("Created event template with handle name:", event);
 
             let signedEvent;
 
