@@ -56,7 +56,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Try different ways to get public key based on available API
                 try {
-                    if (window.NostrTools && typeof window.NostrTools.getPublicKey === 'function') {
+                    if (window.getPublicKey) {
+                        console.log("Using global getPublicKey for saved key");
+                        userPublicKey = window.getPublicKey(hexToBytes(savedKey));
+                    } else if (window.NostrTools && typeof window.NostrTools.getPublicKey === 'function') {
                         console.log("Using NostrTools.getPublicKey for saved key");
                         userPublicKey = window.NostrTools.getPublicKey(hexToBytes(savedKey));
                     } else if (window.nostrTools && typeof window.nostrTools.getPublicKey === 'function') {
@@ -97,26 +100,62 @@ document.addEventListener('DOMContentLoaded', function() {
             let secretKey;
 
             // Try different ways to generate a key based on available API
-            if (window.NostrTools && window.NostrTools.generateSecretKey) {
+            if (window.generatePrivateKey) {
+                console.log("Using global generatePrivateKey");
+                secretKey = window.generatePrivateKey();
+                // Check if it's a hex string or Uint8Array
+                if (typeof secretKey === 'string') {
+                    userPrivateKey = secretKey;
+                    secretKey = hexToBytes(secretKey);
+                } else {
+                    userPrivateKey = bytesToHex(secretKey);
+                }
+            } else if (window.NostrTools && typeof window.NostrTools.generateSecretKey === 'function') {
                 console.log("Using NostrTools.generateSecretKey");
                 secretKey = window.NostrTools.generateSecretKey();
-            } else if (window.nostrTools && window.nostrTools.generateSecretKey) {
+                userPrivateKey = bytesToHex(secretKey);
+            } else if (window.NostrTools && typeof window.NostrTools.generatePrivateKey === 'function') {
+                console.log("Using NostrTools.generatePrivateKey");
+                secretKey = window.NostrTools.generatePrivateKey();
+                // Check if it's a hex string or Uint8Array
+                if (typeof secretKey === 'string') {
+                    userPrivateKey = secretKey;
+                    secretKey = hexToBytes(secretKey);
+                } else {
+                    userPrivateKey = bytesToHex(secretKey);
+                }
+            } else if (window.nostrTools && typeof window.nostrTools.generateSecretKey === 'function') {
                 console.log("Using nostrTools.generateSecretKey");
                 secretKey = window.nostrTools.generateSecretKey();
+                userPrivateKey = bytesToHex(secretKey);
+            } else if (window.nostrTools && typeof window.nostrTools.generatePrivateKey === 'function') {
+                console.log("Using nostrTools.generatePrivateKey");
+                secretKey = window.nostrTools.generatePrivateKey();
+                // Check if it's a hex string or Uint8Array
+                if (typeof secretKey === 'string') {
+                    userPrivateKey = secretKey;
+                    secretKey = hexToBytes(secretKey);
+                } else {
+                    userPrivateKey = bytesToHex(secretKey);
+                }
             } else {
                 console.log("Generating random key with crypto API");
                 // Generate a random key if the library function isn't available
                 secretKey = new Uint8Array(32);
                 window.crypto.getRandomValues(secretKey);
+                userPrivateKey = bytesToHex(secretKey);
             }
 
-            userPrivateKey = bytesToHex(secretKey);
+            console.log("Generated private key:", userPrivateKey);
 
             // Try different ways to get public key based on available API
-            if (window.NostrTools && window.NostrTools.getPublicKey) {
+            if (window.getPublicKey) {
+                console.log("Using global getPublicKey");
+                userPublicKey = window.getPublicKey(secretKey);
+            } else if (window.NostrTools && typeof window.NostrTools.getPublicKey === 'function') {
                 console.log("Using NostrTools.getPublicKey");
                 userPublicKey = window.NostrTools.getPublicKey(secretKey);
-            } else if (window.nostrTools && window.nostrTools.getPublicKey) {
+            } else if (window.nostrTools && typeof window.nostrTools.getPublicKey === 'function') {
                 console.log("Using nostrTools.getPublicKey");
                 userPublicKey = window.nostrTools.getPublicKey(secretKey);
             } else {
@@ -324,11 +363,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             );
 
-            // Send a welcome message after a delay to ensure connections are established
+            // Add a welcome message to the chat locally without sending it to relays
             setTimeout(() => {
-                console.log("Sending welcome message");
-                sendMessage('Hallo! Ich bin dem Ottobrunner Hofflohmarkt Chat beigetreten.');
-            }, 3000);
+                console.log("Adding welcome message locally");
+
+                // Create a local event for display only
+                const welcomeEvent = {
+                    kind: 1,
+                    created_at: Math.floor(Date.now() / 1000),
+                    pubkey: userPublicKey,
+                    content: 'Willkommen im Ottobrunner Hofflohmarkt Chat! Sie können jetzt Nachrichten senden und empfangen.',
+                    id: 'local-welcome-' + Math.random().toString(36).substring(2, 15),
+                    tags: [['t', CHANNEL_ID]]
+                };
+
+                // Display the welcome message locally
+                displayMessage(welcomeEvent);
+            }, 1000);
 
         } catch (error) {
             console.error("Error initializing Nostr connection:", error);
@@ -392,6 +443,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 pubkey: userPublicKey // Add pubkey to the event
             };
 
+            console.log("Created event template:", event);
+
             let signedEvent;
 
             // Sign with extension or with our private key
@@ -408,11 +461,30 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // Try different ways to sign based on available API
                 try {
-                    if (window.NostrTools && typeof window.NostrTools.finalizeEvent === 'function') {
+                    // Try all possible signing methods
+                    if (window.finalizeEvent) {
+                        console.log("Signing with global finalizeEvent");
+                        signedEvent = window.finalizeEvent(
+                            event,
+                            hexToBytes(userPrivateKey)
+                        );
+                    } else if (window.signEvent) {
+                        console.log("Signing with global signEvent");
+                        signedEvent = window.signEvent(
+                            event,
+                            userPrivateKey
+                        );
+                    } else if (window.NostrTools && typeof window.NostrTools.finalizeEvent === 'function') {
                         console.log("Signing with NostrTools.finalizeEvent");
                         signedEvent = window.NostrTools.finalizeEvent(
                             event,
                             hexToBytes(userPrivateKey)
+                        );
+                    } else if (window.NostrTools && typeof window.NostrTools.signEvent === 'function') {
+                        console.log("Signing with NostrTools.signEvent");
+                        signedEvent = window.NostrTools.signEvent(
+                            event,
+                            userPrivateKey
                         );
                     } else if (window.nostrTools && typeof window.nostrTools.finalizeEvent === 'function') {
                         console.log("Signing with nostrTools.finalizeEvent");
@@ -420,39 +492,154 @@ document.addEventListener('DOMContentLoaded', function() {
                             event,
                             hexToBytes(userPrivateKey)
                         );
+                    } else if (window.nostrTools && typeof window.nostrTools.signEvent === 'function') {
+                        console.log("Signing with nostrTools.signEvent");
+                        signedEvent = window.nostrTools.signEvent(
+                            event,
+                            userPrivateKey
+                        );
                     } else {
-                        // Try to manually sign the event
-                        console.log("Attempting manual event signing");
-
-                        // Create event ID (sha256 hash of the serialized event)
-                        const eventData = JSON.stringify([
-                            0,
-                            event.pubkey,
-                            event.created_at,
-                            event.kind,
-                            event.tags,
-                            event.content
-                        ]);
-
-                        // Use SubtleCrypto if available
-                        if (window.crypto && window.crypto.subtle) {
-                            const encoder = new TextEncoder();
-                            const data = encoder.encode(eventData);
-                            const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
-                            const hashArray = Array.from(new Uint8Array(hashBuffer));
-                            const id = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-                            event.id = id;
-
-                            // We can't sign without the proper libraries, so we'll just use the event as is
-                            console.warn("Unable to properly sign the event, using unsigned event");
-                            signedEvent = event;
-                        } else {
-                            throw new Error("No method found to create event ID");
-                        }
+                        // We can't sign the event properly
+                        console.error("No method found to sign the event");
+                        alert("Fehler: Die Nachricht konnte nicht signiert werden. Die Nostr-Bibliothek wurde nicht korrekt geladen. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                        return; // Exit the function without sending
                     }
 
                     console.log("Signed event:", signedEvent);
+
+                    // Verify that the event has all required fields or try to fix it
+                    console.log("Checking signed event:", signedEvent);
+
+                    // If the event is just a string (which can happen with some libraries), it might be just the signature
+                    if (typeof signedEvent === 'string') {
+                        try {
+                            // First try to parse it as JSON
+                            try {
+                                signedEvent = JSON.parse(signedEvent);
+                                console.log("Parsed event from JSON string:", signedEvent);
+                            } catch (parseError) {
+                                console.log("Not a JSON string, might be just the signature");
+
+                                // If it's not JSON, it might be just the signature
+                                // Check if it looks like a hex string (signature)
+                                if (/^[0-9a-f]{64,}$/i.test(signedEvent)) {
+                                    console.log("String appears to be a signature, reconstructing event");
+
+                                    // Create a new event with the signature
+                                    const originalEvent = { ...event };
+
+                                    // Generate an ID if we can
+                                    let id = '';
+                                    if (window.NostrTools && typeof window.NostrTools.getEventHash === 'function') {
+                                        id = window.NostrTools.getEventHash(originalEvent);
+                                    } else if (window.nostrTools && typeof window.nostrTools.getEventHash === 'function') {
+                                        id = window.nostrTools.getEventHash(originalEvent);
+                                    } else if (window.getEventHash) {
+                                        id = window.getEventHash(originalEvent);
+                                    }
+
+                                    // Reconstruct the event
+                                    signedEvent = {
+                                        ...originalEvent,
+                                        id: id || 'missing-id', // Use generated ID or placeholder
+                                        sig: signedEvent // Use the string as the signature
+                                    };
+
+                                    console.log("Reconstructed event:", signedEvent);
+                                } else {
+                                    console.error("Failed to parse event string and it doesn't look like a signature");
+                                    throw new Error("Invalid event format");
+                                }
+                            }
+                        } catch (error) {
+                            console.error("Failed to handle event string:", error);
+                            alert("Fehler: Die Nachricht wurde nicht korrekt signiert und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                            return;
+                        }
+                    }
+
+                    // Check if we have a valid event object
+                    if (!signedEvent || typeof signedEvent !== 'object') {
+                        console.error("Invalid event object:", signedEvent);
+                        alert("Fehler: Die Nachricht wurde nicht korrekt signiert und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                        return;
+                    }
+
+                    // Try to fix missing fields if possible
+                    if (!signedEvent.pubkey && userPublicKey) {
+                        console.log("Adding missing pubkey to event");
+                        signedEvent.pubkey = userPublicKey;
+                    }
+
+                    if (!signedEvent.created_at) {
+                        console.log("Adding missing created_at to event");
+                        signedEvent.created_at = Math.floor(Date.now() / 1000);
+                    }
+
+                    if (!signedEvent.kind) {
+                        console.log("Adding missing kind to event");
+                        signedEvent.kind = 1;
+                    }
+
+                    if (!signedEvent.tags) {
+                        console.log("Adding missing tags to event");
+                        signedEvent.tags = [['t', CHANNEL_ID]];
+                    }
+
+                    // Final check for critical fields
+                    if (!signedEvent.id || !signedEvent.sig) {
+                        console.error("Event is missing critical fields (id or sig):", signedEvent);
+                        alert("Fehler: Die Nachricht wurde nicht korrekt signiert und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                        return;
+                    }
+
+                    // Verify the signature if possible
+                    let signatureVerified = false;
+
+                    try {
+                        if (window.verifyEvent) {
+                            console.log("Verifying with global verifyEvent");
+                            const isValid = window.verifyEvent(signedEvent);
+                            if (isValid) {
+                                console.log("Event signature verified successfully with global verifyEvent");
+                                signatureVerified = true;
+                            } else {
+                                console.warn("Event signature verification failed with global verifyEvent");
+                            }
+                        }
+
+                        if (!signatureVerified && window.NostrTools && typeof window.NostrTools.verifyEvent === 'function') {
+                            console.log("Verifying with NostrTools.verifyEvent");
+                            const isValid = window.NostrTools.verifyEvent(signedEvent);
+                            if (isValid) {
+                                console.log("Event signature verified successfully with NostrTools.verifyEvent");
+                                signatureVerified = true;
+                            } else {
+                                console.warn("Event signature verification failed with NostrTools.verifyEvent");
+                            }
+                        }
+
+                        if (!signatureVerified && window.nostrTools && typeof window.nostrTools.verifyEvent === 'function') {
+                            console.log("Verifying with nostrTools.verifyEvent");
+                            const isValid = window.nostrTools.verifyEvent(signedEvent);
+                            if (isValid) {
+                                console.log("Event signature verified successfully with nostrTools.verifyEvent");
+                                signatureVerified = true;
+                            } else {
+                                console.warn("Event signature verification failed with nostrTools.verifyEvent");
+                            }
+                        }
+
+                        // If we couldn't verify the signature with any method, but we have id and sig fields,
+                        // we'll still try to send the event
+                        if (!signatureVerified) {
+                            console.warn("Could not verify event signature with any available method, but event has id and sig fields");
+                            console.warn("Will attempt to send the event anyway");
+                        }
+                    } catch (verifyError) {
+                        console.error("Error during signature verification:", verifyError);
+                        // Continue anyway since we have id and sig fields
+                    }
                 } catch (signError) {
                     console.error("Error signing event:", signError);
                     alert("Fehler beim Signieren der Nachricht. Bitte versuchen Sie es erneut.");
