@@ -510,6 +510,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add a welcome message to the chat locally without sending it to relays
                 console.log("Adding welcome message locally");
 
+                // Create tags for the welcome message
+                const welcomeTags = [['t', CHANNEL_ID]];
+
+                // Add handle name tags if we have profile info
+                if (window.profileCache && window.profileCache[userPublicKey]) {
+                    const profile = window.profileCache[userPublicKey];
+
+                    if (profile.name) {
+                        welcomeTags.push(['name', profile.name]);
+                    }
+
+                    if (profile.display_name) {
+                        welcomeTags.push(['display_name', profile.display_name]);
+                    } else if (profile.displayName) {
+                        welcomeTags.push(['display_name', profile.displayName]);
+                    }
+                }
+
                 // Create a local event for display only
                 const welcomeEvent = {
                     kind: 1,
@@ -517,11 +535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     pubkey: userPublicKey,
                     content: 'Willkommen im Ottobrunner Hofflohmarkt Chat! Sie können jetzt Nachrichten senden und empfangen.',
                     id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
-                    tags: [
-                        ['t', CHANNEL_ID],
-                        ['name', 'sattler'],
-                        ['display_name', 'sattler']
-                    ]
+                    tags: welcomeTags
                 };
 
                 // Display the welcome message locally
@@ -670,7 +684,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let hasSpecialTag = false;
             if (event.tags && Array.isArray(event.tags)) {
                 for (const tag of event.tags) {
-                    if (tag[0] === 'p' && tag[1] === 'sattler') {
+                    if ((tag[0] === 'name' || tag[0] === 'display_name' || tag[0] === 'displayName') && tag[1]) {
                         hasSpecialTag = true;
                         break;
                     }
@@ -977,8 +991,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 localEvent.tags = [];
             }
 
-            // Add a special tag for our handle name
-            localEvent.tags.push(['p', 'sattler']);
+            // Add handle name tags if we have profile info
+            if (window.profileCache && window.profileCache[userPublicKey]) {
+                const profile = window.profileCache[userPublicKey];
+
+                if (profile.name) {
+                    localEvent.tags.push(['name', profile.name]);
+                }
+
+                if (profile.display_name) {
+                    localEvent.tags.push(['display_name', profile.display_name]);
+                } else if (profile.displayName) {
+                    localEvent.tags.push(['display_name', profile.displayName]);
+                }
+            }
 
             // Log the local event for debugging
             console.log("Displaying local event with handle:", localEvent);
