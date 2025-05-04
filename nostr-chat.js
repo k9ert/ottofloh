@@ -488,6 +488,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
+            // Create a buffer to store events for sorting
+            const eventBuffer = [];
+            let isInitialLoad = true;
+            let initialLoadTimeout = null;
+
             // Subscribe to channel messages
             relayPool.subscribe(
                 relays,
@@ -499,16 +504,68 @@ document.addEventListener('DOMContentLoaded', function() {
                 ],
                 {
                     onevent(event) {
-                        displayMessage(event);
+                        if (isInitialLoad) {
+                            // During initial load, add to buffer for sorting
+                            eventBuffer.push(event);
+
+                            // Clear any existing timeout
+                            if (initialLoadTimeout) {
+                                clearTimeout(initialLoadTimeout);
+                            }
+
+                            // Set a timeout to process the buffer
+                            initialLoadTimeout = setTimeout(() => {
+                                console.log(`Processing ${eventBuffer.length} buffered events`);
+
+                                // Sort events by timestamp
+                                eventBuffer.sort((a, b) => a.created_at - b.created_at);
+
+                                // Display events in order
+                                eventBuffer.forEach(e => displayMessage(e));
+
+                                // Clear buffer and mark initial load as complete
+                                eventBuffer.length = 0;
+                                isInitialLoad = false;
+                                console.log("Initial load complete, now displaying events in real-time");
+                            }, 2000); // Wait 2 seconds to collect initial events
+                        } else {
+                            // After initial load, display events immediately
+                            displayMessage(event);
+                        }
+                    },
+                    oneose() {
+                        // End of stored events, process any remaining in buffer
+                        if (isInitialLoad && eventBuffer.length > 0) {
+                            console.log(`End of stored events, processing ${eventBuffer.length} buffered events`);
+
+                            // Sort events by timestamp
+                            eventBuffer.sort((a, b) => a.created_at - b.created_at);
+
+                            // Display events in order
+                            eventBuffer.forEach(e => displayMessage(e));
+
+                            // Clear buffer and mark initial load as complete
+                            eventBuffer.length = 0;
+                            isInitialLoad = false;
+                            console.log("Initial load complete, now displaying events in real-time");
+                        }
                     }
                 }
             );
 
             // We only send kind=1 events as requested
-            setTimeout(async () => {
+            // Add a welcome message after the initial load is complete
+            const addWelcomeMessage = () => {
+                // Check if initial load is complete
+                if (isInitialLoad) {
+                    // Still loading, check again in a bit
+                    console.log("Still loading events, delaying welcome message");
+                    setTimeout(addWelcomeMessage, 500);
+                    return;
+                }
 
                 // Add a welcome message to the chat locally without sending it to relays
-                console.log("Adding welcome message locally");
+                console.log("Initial load complete, adding welcome message locally");
 
                 // Create tags for the welcome message
                 const welcomeTags = [['t', CHANNEL_ID]];
@@ -533,14 +590,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     kind: 1,
                     created_at: Math.floor(Date.now() / 1000),
                     pubkey: userPublicKey,
-                    content: 'Willkommen im Ottobrunner Hofflohmarkt Chat! Sie können jetzt Nachrichten senden und empfangen.',
+                    content: '... betritt den Chat.',
                     id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
                     tags: welcomeTags
                 };
 
                 // Display the welcome message locally
                 displayMessage(welcomeEvent);
-            }, 1000);
+            };
+
+            // Start the welcome message process
+            setTimeout(addWelcomeMessage, 1000);
 
         } catch (error) {
             console.error("Error initializing Nostr connection:", error);
