@@ -74,5 +74,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@4.1.4
         with:
           branch: gh-pages
-          folder: .
+          folder: assets
+          target-folder: assets
           token: ${{ secrets.GITHUB_TOKEN }}
+          clean: false  # This prevents deleting files that aren't in the source folder
