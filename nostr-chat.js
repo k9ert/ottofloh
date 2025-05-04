@@ -476,13 +476,115 @@ document.addEventListener('DOMContentLoaded', function() {
             messageDiv.classList.add('others');
         }
 
-        // Create header with username (shortened pubkey) and timestamp
+        // Create header with username (handle name or shortened pubkey) and timestamp
         const header = document.createElement('div');
         header.className = 'chat-header';
 
         const username = document.createElement('span');
         username.className = 'chat-username';
-        username.textContent = shortenPubkey(event.pubkey);
+
+        // Check if the event has metadata with a display name or nip05 identifier
+        let displayName = shortenPubkey(event.pubkey); // Default to shortened pubkey
+
+        // Store the pubkey as a data attribute for potential future use
+        username.dataset.pubkey = event.pubkey;
+
+        // Check for handle name in the event content (might contain profile info)
+        try {
+            // In Nostr, profile info might be in kind=0 events or in the content of regular events
+            if (event.kind === 0 && event.content) {
+                // Try to parse profile info from kind=0 events
+                try {
+                    const profile = JSON.parse(event.content);
+                    if (profile.name) {
+                        displayName = profile.name;
+                    } else if (profile.display_name) {
+                        displayName = profile.display_name;
+                    } else if (profile.displayName) {
+                        displayName = profile.displayName;
+                    } else if (profile.nip05) {
+                        displayName = profile.nip05;
+                    }
+                } catch (e) {
+                    console.log("Could not parse profile info:", e);
+                }
+            }
+
+            // Check for handle name in the event tags
+            if (event.tags && Array.isArray(event.tags)) {
+                // Look for various tag types that might contain identity info
+                for (const tag of event.tags) {
+                    // Special tag for our handle name
+                    if (tag[0] === 'p' && tag[1] === 'sattler') {
+                        displayName = 'sattler';
+                        break;
+                    }
+
+                    // NIP-05 identifier
+                    if (tag[0] === 'nip05' && tag[1]) {
+                        displayName = tag[1];
+                        break;
+                    }
+
+                    // Name tag
+                    if (tag[0] === 'name' && tag[1]) {
+                        displayName = tag[1];
+                        break;
+                    }
+
+                    // Display name tag
+                    if ((tag[0] === 'display_name' || tag[0] === 'displayName') && tag[1]) {
+                        displayName = tag[1];
+                        break;
+                    }
+
+                    // Some clients use 'd' tag for display name
+                    if (tag[0] === 'd' && tag[1]) {
+                        displayName = tag[1];
+                        break;
+                    }
+                }
+            }
+
+            // Check if this pubkey is known to be associated with a specific handle
+            // This is a manual mapping for known users
+            const knownHandles = {
+                // Add known pubkeys and their handles here
+                // Example: 'pubkey_hex': 'handle_name'
+                '2ab3178f2db05799129a8b4d81dbdd2e7ec4b3532151732301c0145f20567df4': 'sattler'
+            };
+
+            if (knownHandles[event.pubkey]) {
+                displayName = knownHandles[event.pubkey];
+            }
+        } catch (error) {
+            console.log("Error processing display name:", error);
+        }
+
+        // If this is our own message and we haven't already set a handle name via tags
+        // Only use "Sie" if we don't have a better name already
+        if (event.pubkey === userPublicKey && displayName === shortenPubkey(event.pubkey)) {
+            // Check if this is a local event with our special tag
+            let hasSpecialTag = false;
+            if (event.tags && Array.isArray(event.tags)) {
+                for (const tag of event.tags) {
+                    if (tag[0] === 'p' && tag[1] === 'sattler') {
+                        hasSpecialTag = true;
+                        break;
+                    }
+                }
+            }
+
+            // If it doesn't have our special tag, use "Sie"
+            if (!hasSpecialTag) {
+                displayName = 'Sie'; // Default for own messages
+            }
+        }
+
+        username.textContent = displayName;
+
+        // Add tooltip with full pubkey for reference
+        username.title = event.pubkey;
 
         const timestamp = document.createElement('span');
         timestamp.className = 'chat-timestamp';
@@ -757,6 +859,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Change the ID to a local version to ensure it's displayed
             localEvent.id = 'local-sent-' + (signedEvent.id || Date.now() + '-' + Math.random().toString(36).substring(2, 15));
+
+            // Add a special tag to indicate this is our message with our preferred handle
+            if (!localEvent.tags) {
+                localEvent.tags = [];
+            }
+
+            // Add a special tag for our handle name
+            localEvent.tags.push(['p', 'sattler']);
+
+            // Log the local event for debugging
+            console.log("Displaying local event with handle:", localEvent);
 
             // Display the message with our local ID
             displayMessage(localEvent);
