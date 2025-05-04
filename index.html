@@ -189,6 +189,39 @@
             text-align: left;
         }
 
+        .loading-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        .loading-indicator p {
+            margin-top: 10px;
+            color: #555;
+            font-size: 14px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #4CAF50;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .chat-message {
             margin-bottom: 10px;
             padding: 10px;
@@ -422,6 +455,10 @@
             </div>
 
             <div id="nostr-chat-interface" style="display: none;">
+                <div id="loading-indicator" class="loading-indicator">
+                    <div class="spinner"></div>
+                    <p>Nachrichten werden geladen...</p>
+                </div>
                 <div id="chat-container" class="chat-container">
                     <!-- Messages will be inserted here by JavaScript -->
                 </div>

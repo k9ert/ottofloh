@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loginContainer = document.getElementById('nostr-login-container');
     const chatInterface = document.getElementById('nostr-chat-interface');
     const chatContainer = document.getElementById('chat-container');
+    const loadingIndicator = document.getElementById('loading-indicator');
     const chatInput = document.getElementById('chat-input');
     const sendButton = document.getElementById('chat-send-button');
     const generateKeyButton = document.getElementById('generate-key-button');
@@ -331,6 +332,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function showChatInterface() {
         loginContainer.style.display = 'none';
         chatInterface.style.display = 'block';
+
+        // Show loading indicator and hide chat container initially
+        loadingIndicator.style.display = 'flex';
+        chatContainer.style.display = 'none';
+    }
+
+    // Hide loading indicator and show chat container
+    function hideLoadingIndicator() {
+        loadingIndicator.style.display = 'none';
+        chatContainer.style.display = 'block';
     }
 
     // Initialize Nostr connection
@@ -493,6 +504,30 @@ document.addEventListener('DOMContentLoaded', function() {
             let isInitialLoad = true;
             let initialLoadTimeout = null;
 
+            // Set a maximum timeout for loading indicator
+            setTimeout(() => {
+                if (isInitialLoad) {
+                    console.log("Maximum loading time reached, hiding loading indicator");
+                    // Process any events we have so far
+                    if (eventBuffer.length > 0) {
+                        // Sort events by timestamp
+                        eventBuffer.sort((a, b) => a.created_at - b.created_at);
+
+                        // Display events in order
+                        eventBuffer.forEach(e => displayMessage(e));
+
+                        // Clear buffer
+                        eventBuffer.length = 0;
+                    }
+
+                    // Mark initial load as complete
+                    isInitialLoad = false;
+
+                    // Hide loading indicator and show chat container
+                    hideLoadingIndicator();
+                }
+            }, 10000); // 10 seconds maximum loading time
+
             // Subscribe to channel messages
             relayPool.subscribe(
                 relays,
@@ -527,6 +562,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                 eventBuffer.length = 0;
                                 isInitialLoad = false;
                                 console.log("Initial load complete, now displaying events in real-time");
+
+                                // Hide loading indicator and show chat container
+                                hideLoadingIndicator();
                             }, 2000); // Wait 2 seconds to collect initial events
                         } else {
                             // After initial load, display events immediately
@@ -548,6 +586,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             eventBuffer.length = 0;
                             isInitialLoad = false;
                             console.log("Initial load complete, now displaying events in real-time");
+
+                            // Hide loading indicator and show chat container
+                            hideLoadingIndicator();
                         }
                     }
                 }
@@ -680,11 +721,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (event.tags && Array.isArray(event.tags)) {
                 // Look for various tag types that might contain identity info
                 for (const tag of event.tags) {
-                    // Special tag for our handle name
-                    if (tag[0] === 'p' && tag[1] === 'sattler') {
-                        displayName = 'sattler';
-                        break;
-                    }
+                    // Removed hardcoded handle name check
 
                     // NIP-05 identifier
                     if (tag[0] === 'nip05' && tag[1]) {
