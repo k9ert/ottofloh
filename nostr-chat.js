@@ -1,9 +1,8 @@
 // Nostr Chat Implementation
 document.addEventListener('DOMContentLoaded', function() {
-    // Relays to connect to
+    // Relays to connect to - using only one reliable relay for now
     const relays = [
-        'wss://relay.damus.io',
-        'wss://relay.nostr.band'
+        'wss://relay.damus.io'
     ];
 
     // Chat channel identifier (using a specific tag for this event)
@@ -367,13 +366,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     for (const url of relayUrls) {
                         try {
                             let relay;
-                            // Try to initialize relay
+                            // Try to initialize relay with additional options
                             if (window.NostrTools && typeof window.NostrTools.relayInit === 'function') {
                                 console.log(`Initializing relay ${url} with NostrTools.relayInit`);
-                                relay = window.NostrTools.relayInit(url);
+                                // Add options for better reliability
+                                const options = {
+                                    reconnect: true,
+                                    maxRetries: 10,
+                                    retryTimeout: 5000
+                                };
+                                relay = window.NostrTools.relayInit(url, options);
                             } else if (window.nostrTools && typeof window.nostrTools.relayInit === 'function') {
                                 console.log(`Initializing relay ${url} with nostrTools.relayInit`);
-                                relay = window.nostrTools.relayInit(url);
+                                // Add options for better reliability
+                                const options = {
+                                    reconnect: true,
+                                    maxRetries: 10,
+                                    retryTimeout: 5000
+                                };
+                                relay = window.nostrTools.relayInit(url, options);
                             } else {
                                 console.error("No relay initialization function found");
                                 continue;
@@ -382,7 +393,24 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Set up connection handlers
                             relay.on('connect', () => {
                                 console.log(`Connected to ${url}`);
-                                this.activeRelays.push(url);
+
+                                // Clear connection timeout if it exists
+                                if (relay._connectionTimeout) {
+                                    clearTimeout(relay._connectionTimeout);
+                                    relay._connectionTimeout = null;
+                                }
+
+                                // Add to active relays if not already there
+                                if (!this.activeRelays.includes(url)) {
+                                    this.activeRelays.push(url);
+                                }
+
+                                // Now the WebSocket should be defined - add error handler
+                                if (relay.ws) {
+                                    relay.ws.onerror = (wsError) => {
+                                        console.error(`WebSocket error with ${url}:`, wsError);
+                                    };
+                                }
 
                                 // Subscribe to events
                                 try {
@@ -403,12 +431,36 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
 
                             relay.on('error', (err) => {
-                                console.error(`Error with relay ${url}:`, err);
+                                // If the error is undefined, just log it but don't take any action
+                                if (err === undefined) {
+                                    console.log(`Ignoring undefined error with relay ${url} - this is likely a harmless WebSocket event`);
+                                    return; // Exit early without doing anything
+                                }
+
+                                // Handle defined errors
+                                const errorMessage = err ? (err.message || String(err)) : 'Unknown WebSocket error';
+                                console.error(`Error with relay ${url}: ${errorMessage}`);
+
                                 // Remove from active relays
                                 const index = this.activeRelays.indexOf(url);
                                 if (index > -1) {
                                     this.activeRelays.splice(index, 1);
                                 }
+
+                                // Try to reconnect after a delay
+                                setTimeout(() => {
+                                    console.log(`Attempting to reconnect to ${url} after error`);
+                                    try {
+                                        // Check if the WebSocket is already connecting or open
+                                        if (relay.status !== 1 && relay.status !== 2) { // 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
+                                            relay.connect();
+                                        } else {
+                                            console.log(`Relay ${url} is already connecting or open, no need to reconnect`);
+                                        }
+                                    } catch (reconnectError) {
+                                        console.error(`Failed to reconnect to ${url}:`, reconnectError);
+                                    }
+                                }, 5000);
                             });
 
                             relay.on('disconnect', () => {
@@ -426,10 +478,156 @@ document.addEventListener('DOMContentLoaded', function() {
                                 }, 5000);
                             });
 
-                            // Connect to relay
+                            // WebSocket error handling is now in the main connect handler
+
+                            // Connect to relay with timeout
                             console.log(`Connecting to ${url}`);
-                            relay.connect();
-                            this.relays.push(relay);
+                            try {
+                                // Add the relay to our list before connecting
+                                this.relays.push(relay);
+
+                                // Set a connection timeout
+                                const connectionTimeout = setTimeout(() => {
+                                    console.warn(`Connection timeout for ${url}, creating new relay instance`);
+                                    try {
+                                        // Remove this relay from our list
+                                        const relayIndex = this.relays.indexOf(relay);
+                                        if (relayIndex > -1) {
+                                            this.relays.splice(relayIndex, 1);
+                                        }
+
+                                        // Force close the connection
+                                        try {
+                                            if (relay.ws) {
+                                                relay.ws.close();
+                                            }
+                                        } catch (closeError) {
+                                            console.error(`Error closing timed out connection to ${url}:`, closeError);
+                                        }
+
+                                        // Create a completely new relay instance
+                                        setTimeout(() => {
+                                            try {
+                                                console.log(`Creating new relay instance for ${url}`);
+                                                let newRelay;
+
+                                                // Initialize with the same options as before
+                                                if (window.NostrTools && typeof window.NostrTools.relayInit === 'function') {
+                                                    const options = {
+                                                        reconnect: true,
+                                                        maxRetries: 10,
+                                                        retryTimeout: 5000
+                                                    };
+                                                    newRelay = window.NostrTools.relayInit(url, options);
+                                                } else if (window.nostrTools && typeof window.nostrTools.relayInit === 'function') {
+                                                    const options = {
+                                                        reconnect: true,
+                                                        maxRetries: 10,
+                                                        retryTimeout: 5000
+                                                    };
+                                                    newRelay = window.nostrTools.relayInit(url, options);
+                                                } else {
+                                                    console.error("No relay initialization function found for reconnect");
+                                                    return;
+                                                }
+
+                                                // Set up the same event handlers
+                                                newRelay.on('connect', () => {
+                                                    console.log(`Connected to ${url} (new instance)`);
+
+                                                    // Add to active relays if not already there
+                                                    if (!this.activeRelays.includes(url)) {
+                                                        this.activeRelays.push(url);
+                                                    }
+
+                                                    // Now the WebSocket should be defined - add error handler
+                                                    if (newRelay.ws) {
+                                                        newRelay.ws.onerror = (wsError) => {
+                                                            console.error(`WebSocket error with ${url} (new instance):`, wsError);
+                                                        };
+                                                    }
+
+                                                    // Re-subscribe to the same filters if we have them
+                                                    if (filters) {
+                                                        try {
+                                                            const sub = newRelay.sub(filters);
+                                                            console.log(`Re-subscribed to ${url} (new instance)`, sub);
+
+                                                            // Set up the same event handlers
+                                                            if (callbacks) {
+                                                                if (callbacks.onevent) {
+                                                                    sub.on('event', callbacks.onevent);
+                                                                }
+                                                                if (callbacks.oneose) {
+                                                                    sub.on('eose', callbacks.oneose);
+                                                                }
+                                                            }
+                                                        } catch (subError) {
+                                                            console.error(`Error re-subscribing to ${url} (new instance):`, subError);
+                                                        }
+                                                    }
+                                                });
+
+                                                // Set up error handler
+                                                newRelay.on('error', (err) => {
+                                                    // If the error is undefined, just log it but don't take any action
+                                                    if (err === undefined) {
+                                                        console.log(`Ignoring undefined error with relay ${url} (new instance) - this is likely a harmless WebSocket event`);
+                                                        return; // Exit early without doing anything
+                                                    }
+
+                                                    // Handle defined errors
+                                                    const errorMessage = err ? (err.message || String(err)) : 'Unknown WebSocket error';
+                                                    console.error(`Error with relay ${url} (new instance): ${errorMessage}`);
+
+                                                    // Remove from active relays
+                                                    const index = this.activeRelays.indexOf(url);
+                                                    if (index > -1) {
+                                                        this.activeRelays.splice(index, 1);
+                                                    }
+                                                });
+
+                                                // Set up disconnect handler
+                                                newRelay.on('disconnect', () => {
+                                                    console.log(`Disconnected from ${url} (new instance)`);
+
+                                                    // Remove from active relays
+                                                    const index = this.activeRelays.indexOf(url);
+                                                    if (index > -1) {
+                                                        this.activeRelays.splice(index, 1);
+                                                    }
+                                                });
+
+                                                // Connect to the new relay
+                                                newRelay.connect();
+
+                                                // Add to our list of relays
+                                                this.relays.push(newRelay);
+                                            } catch (newRelayError) {
+                                                console.error(`Failed to create new relay instance for ${url}:`, newRelayError);
+                                            }
+                                        }, 2000); // Wait 2 seconds before creating a new instance
+                                    } catch (reconnectError) {
+                                        console.error(`Error during relay recreation for ${url}:`, reconnectError);
+                                    }
+                                }, 10000); // 10 second timeout
+
+                                // Store the connection timeout for later clearing
+                                relay._connectionTimeout = connectionTimeout;
+
+                                relay.connect();
+                            } catch (connectError) {
+                                console.error(`Error connecting to ${url}:`, connectError);
+                                // Try to reconnect after a delay
+                                setTimeout(() => {
+                                    console.log(`Attempting to reconnect to ${url} after connection error`);
+                                    try {
+                                        relay.connect();
+                                    } catch (reconnectError) {
+                                        console.error(`Failed to reconnect to ${url}:`, reconnectError);
+                                    }
+                                }, 5000);
+                            }
                         } catch (e) {
                             console.error(`Error setting up relay ${url}:`, e);
                         }
@@ -451,10 +649,22 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (!relay) {
                                 if (window.NostrTools && typeof window.NostrTools.relayInit === 'function') {
                                     console.log(`Initializing new relay ${url} for publishing`);
-                                    relay = window.NostrTools.relayInit(url);
+                                    // Add options for better reliability
+                                    const options = {
+                                        reconnect: true,
+                                        maxRetries: 10,
+                                        retryTimeout: 5000
+                                    };
+                                    relay = window.NostrTools.relayInit(url, options);
                                 } else if (window.nostrTools && typeof window.nostrTools.relayInit === 'function') {
                                     console.log(`Initializing new relay ${url} for publishing`);
-                                    relay = window.nostrTools.relayInit(url);
+                                    // Add options for better reliability
+                                    const options = {
+                                        reconnect: true,
+                                        maxRetries: 10,
+                                        retryTimeout: 5000
+                                    };
+                                    relay = window.nostrTools.relayInit(url, options);
                                 } else {
                                     console.error("No relay initialization function found");
                                     continue;
@@ -469,27 +679,47 @@ document.addEventListener('DOMContentLoaded', function() {
                                 this.relays.push(relay);
                             }
 
-                            // Publish event
-                            console.log(`Publishing to ${url}`);
-                            try {
-                                // Try to publish and handle different return types
-                                const pub = relay.publish(event);
+                            // Add a small delay before publishing to avoid rate limiting
+                            setTimeout(() => {
+                                console.log(`Publishing to ${url}`);
+                                try {
+                                    // Try to publish and handle different return types
+                                    const pub = relay.publish(event);
 
-                                // Check if pub is a Promise
-                                if (pub && typeof pub.then === 'function') {
-                                    promises.push(
-                                        pub.then(
-                                            () => console.log(`Published to ${url} successfully`),
-                                            (err) => console.error(`Failed to publish to ${url}:`, err)
-                                        )
-                                    );
-                                } else {
-                                    // If not a Promise, just log success
-                                    console.log(`Publication request sent to ${url}`);
+                                    // Check if pub is a Promise
+                                    if (pub && typeof pub.then === 'function') {
+                                        promises.push(
+                                            pub.then(
+                                                () => console.log(`Published to ${url} successfully`),
+                                                (err) => {
+                                                    console.error(`Failed to publish to ${url}:`, err);
+                                                    // If we get a rate limit error, try again with a longer delay
+                                                    if (err && (
+                                                        String(err).includes('rate') ||
+                                                        String(err).includes('limit') ||
+                                                        String(err).includes('spam')
+                                                    )) {
+                                                        console.log(`Detected possible rate limiting, retrying with longer delay`);
+                                                        setTimeout(() => {
+                                                            try {
+                                                                console.log(`Retrying publish to ${url}`);
+                                                                relay.publish(event);
+                                                            } catch (retryError) {
+                                                                console.error(`Error during retry publish to ${url}:`, retryError);
+                                                            }
+                                                        }, 5000); // 5 second delay for retry
+                                                    }
+                                                }
+                                            )
+                                        );
+                                    } else {
+                                        // If not a Promise, just log success
+                                        console.log(`Publication request sent to ${url}`);
+                                    }
+                                } catch (pubError) {
+                                    console.error(`Error during publish to ${url}:`, pubError);
                                 }
-                            } catch (pubError) {
-                                console.error(`Error during publish to ${url}:`, pubError);
-                            }
+                            }, 500); // Small delay before publishing
                         } catch (e) {
                             console.error(`Error publishing to relay ${url}:`, e);
                         }
@@ -516,40 +746,48 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000); // 5 seconds maximum loading time
 
             // Subscribe to channel messages - only from the last 24 hours
-            const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60); // Current time minus 24 hours in seconds
+            // But with a small delay to avoid hammering the relay
+            setTimeout(() => {
+                const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60); // Current time minus 24 hours in seconds
 
-            relayPool.subscribe(
-                relays,
-                [
+                // Limit the number of events to reduce load on the relay
+                const limit = 100; // Reasonable limit for messages
+
+                console.log("Starting subscription with delay to avoid relay spam protection");
+                relayPool.subscribe(
+                    relays,
+                    [
+                        {
+                            kinds: [1], // Regular notes
+                            '#t': [CHANNEL_ID], // Tag for our channel
+                            since: oneDayAgo, // Only get messages from the last 24 hours
+                            limit: limit // Limit the number of events
+                        }
+                    ],
                     {
-                        kinds: [1], // Regular notes
-                        '#t': [CHANNEL_ID], // Tag for our channel
-                        since: oneDayAgo // Only get messages from the last 24 hours
-                    }
-                ],
-                {
-                    onevent(event) {
-                        // Display events immediately as they arrive
-                        displayMessage(event);
+                        onevent(event) {
+                            // Display events immediately as they arrive
+                            displayMessage(event);
 
-                        // If this is the first event, hide the loading indicator
-                        if (isInitialLoad) {
-                            isInitialLoad = false;
-                            hideLoadingIndicator();
-                        }
-                    },
-                    oneose() {
-                        // End of stored events
-                        console.log("End of stored events");
+                            // If this is the first event, hide the loading indicator
+                            if (isInitialLoad) {
+                                isInitialLoad = false;
+                                hideLoadingIndicator();
+                            }
+                        },
+                        oneose() {
+                            // End of stored events
+                            console.log("End of stored events");
 
-                        // Make sure loading indicator is hidden
-                        if (isInitialLoad) {
-                            isInitialLoad = false;
-                            hideLoadingIndicator();
+                            // Make sure loading indicator is hidden
+                            if (isInitialLoad) {
+                                isInitialLoad = false;
+                                hideLoadingIndicator();
+                            }
                         }
                     }
-                }
-            );
+                );
+            }, 2000); // 2 second delay before subscribing
 
             // We only send kind=1 events as requested
             // Add a welcome message after the initial load is complete
