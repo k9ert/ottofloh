@@ -13,6 +13,36 @@ document.addEventListener('DOMContentLoaded', function() {
     let userPrivateKey = null;
     let userPublicKey = null;
     let relayPool = null;
+    let processedEvents = new Set(); // Set to track processed event IDs for deduplication
+
+    // Function to reset identity
+    function resetIdentity() {
+        console.log("Resetting Nostr identity");
+
+        // Clear localStorage
+        localStorage.removeItem('nostr_private_key');
+
+        // Reset state variables
+        userPrivateKey = null;
+        userPublicKey = null;
+
+        // Clear processed events set
+        processedEvents.clear();
+
+        // Clear chat container
+        if (chatContainer) {
+            chatContainer.innerHTML = '';
+        }
+
+        // Show login container and hide chat interface
+        if (loginContainer && chatInterface) {
+            loginContainer.style.display = 'block';
+            chatInterface.style.display = 'none';
+        }
+
+        // Alert the user
+        alert("Ihre Nostr-Identität wurde zurückgesetzt. Sie können nun einen neuen Schlüssel erstellen.");
+    }
 
     // DOM Elements
     const loginContainer = document.getElementById('nostr-login-container');
@@ -179,15 +209,41 @@ document.addEventListener('DOMContentLoaded', function() {
     loginExtensionButton.addEventListener('click', async () => {
         if (window.nostr) {
             try {
+                // Try to get the public key from the extension
                 userPublicKey = await window.nostr.getPublicKey();
+
+                // Check if we got a valid public key
+                if (!userPublicKey) {
+                    throw new Error("No public key returned from extension");
+                }
+
+                console.log("Successfully connected to Nostr extension, public key:", userPublicKey);
                 showChatInterface();
                 initNostrConnection();
             } catch (error) {
                 console.error('Error connecting to Nostr extension:', error);
-                alert('Fehler beim Verbinden mit der Nostr-Erweiterung. Bitte versuchen Sie es erneut oder erstellen Sie einen neuen Schlüssel.');
+
+                // Check for specific error messages
+                const errorMessage = error?.message || String(error);
+
+                if (errorMessage.includes("no private key found") ||
+                    errorMessage.includes("No key") ||
+                    errorMessage.includes("not found")) {
+                    // This is a common error when the extension is installed but no key is configured
+                    alert('Die Nostr-Erweiterung ist installiert, aber es wurde kein Schlüssel gefunden. ' +
+                          'Bitte konfigurieren Sie zuerst einen Schlüssel in Ihrer Erweiterung oder ' +
+                          'erstellen Sie einen neuen Schlüssel für diesen Chat.');
+                } else if (errorMessage.includes("user rejected")) {
+                    // User rejected the request
+                    alert('Sie haben die Verbindung abgelehnt. Bitte erlauben Sie den Zugriff, ' +
+                          'wenn Sie die Erweiterung verwenden möchten, oder erstellen Sie einen neuen Schlüssel.');
+                } else {
+                    // Generic error
+                    alert('Fehler beim Verbinden mit der Nostr-Erweiterung. Bitte versuchen Sie es erneut oder erstellen Sie einen neuen Schlüssel.');
+                }
             }
         } else {
-            alert('Keine Nostr-Erweiterung gefunden. Bitte installieren Sie eine Nostr-Erweiterung oder erstellen Sie einen neuen Schlüssel.');
+            alert('Keine Nostr-Erweiterung gefunden. Bitte installieren Sie eine Nostr-Erweiterung (wie nos2x oder Alby) oder erstellen Sie einen neuen Schlüssel.');
         }
     });
 
@@ -373,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     created_at: Math.floor(Date.now() / 1000),
                     pubkey: userPublicKey,
                     content: 'Willkommen im Ottobrunner Hofflohmarkt Chat! Sie können jetzt Nachrichten senden und empfangen.',
-                    id: 'local-welcome-' + Math.random().toString(36).substring(2, 15),
+                    id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
                     tags: [['t', CHANNEL_ID]]
                 };
 
@@ -389,8 +445,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Display a message in the chat
     function displayMessage(event) {
+        // Skip if this is a local event without an ID
+        if (!event.id) {
+            console.log("Skipping event without ID:", event);
+            return;
+        }
+
+        // Check if we've already processed this event to avoid duplicates
+        if (event.id.startsWith('local-')) {
+            // Always display local events (they have special IDs starting with 'local-')
+            console.log("Displaying local event:", event.id);
+        } else if (processedEvents.has(event.id)) {
+            // Skip duplicate events
+            console.log("Skipping duplicate event:", event.id);
+            return;
+        } else {
+            // Add to processed events set
+            console.log("Processing new event:", event.id);
+            processedEvents.add(event.id);
+        }
+
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
+        messageDiv.dataset.eventId = event.id; // Store event ID for reference
 
         // Check if this is our own message
         if (event.pubkey === userPublicKey) {
@@ -674,7 +751,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error("relayPool.publish is not a function");
             }
 
-            // Display our own message immediately
+            // Display our own message immediately with a temporary ID
+            // We'll add it to the processed events set so when it comes back from the relay, it won't be displayed again
+            if (signedEvent.id) {
+                processedEvents.add(signedEvent.id);
+                console.log("Added our message ID to processed events:", signedEvent.id);
+            }
+
+            // Display the message
             displayMessage(signedEvent);
 
             // Clear input
@@ -706,6 +790,32 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatTimestamp(timestamp) {
         const date = new Date(timestamp * 1000);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // Set up the hidden reset identity feature
+    const resetTrigger = document.getElementById('reset-identity-trigger');
+    if (resetTrigger) {
+        resetTrigger.style.cursor = 'pointer';
+        resetTrigger.title = 'Identität zurücksetzen (versteckte Funktion)';
+
+        // Add a subtle style to indicate it's clickable (only visible on hover)
+        resetTrigger.addEventListener('mouseover', function() {
+            this.style.textDecoration = 'underline';
+            this.style.color = '#0056b3';
+        });
+
+        resetTrigger.addEventListener('mouseout', function() {
+            this.style.textDecoration = 'none';
+            this.style.color = '';
+        });
+
+        // Add click event to reset identity
+        resetTrigger.addEventListener('click', function() {
+            // Ask for confirmation
+            if (confirm('Möchten Sie Ihre Nostr-Identität wirklich zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                resetIdentity();
+            }
+        });
     }
 
     // Initialize when the library is loaded
