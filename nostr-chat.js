@@ -499,26 +499,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             };
 
-            // Create a buffer to store events for sorting
-            const eventBuffer = [];
+            // Flag to track if we're still in initial loading state
             let isInitialLoad = true;
-            let initialLoadTimeout = null;
 
             // Set a maximum timeout for loading indicator
             setTimeout(() => {
                 if (isInitialLoad) {
                     console.log("Maximum loading time reached, hiding loading indicator");
-                    // Process any events we have so far
-                    if (eventBuffer.length > 0) {
-                        // Sort events by timestamp
-                        eventBuffer.sort((a, b) => a.created_at - b.created_at);
-
-                        // Display events in order
-                        eventBuffer.forEach(e => displayMessage(e));
-
-                        // Clear buffer
-                        eventBuffer.length = 0;
-                    }
 
                     // Mark initial load as complete
                     isInitialLoad = false;
@@ -526,68 +513,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Hide loading indicator and show chat container
                     hideLoadingIndicator();
                 }
-            }, 10000); // 10 seconds maximum loading time
+            }, 5000); // 5 seconds maximum loading time
 
-            // Subscribe to channel messages
+            // Subscribe to channel messages - only from the last 24 hours
+            const oneDayAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60); // Current time minus 24 hours in seconds
+
             relayPool.subscribe(
                 relays,
                 [
                     {
                         kinds: [1], // Regular notes
-                        '#t': [CHANNEL_ID] // Tag for our channel
+                        '#t': [CHANNEL_ID], // Tag for our channel
+                        since: oneDayAgo // Only get messages from the last 24 hours
                     }
                 ],
                 {
                     onevent(event) {
+                        // Display events immediately as they arrive
+                        displayMessage(event);
+
+                        // If this is the first event, hide the loading indicator
                         if (isInitialLoad) {
-                            // During initial load, add to buffer for sorting
-                            eventBuffer.push(event);
-
-                            // Clear any existing timeout
-                            if (initialLoadTimeout) {
-                                clearTimeout(initialLoadTimeout);
-                            }
-
-                            // Set a timeout to process the buffer
-                            initialLoadTimeout = setTimeout(() => {
-                                console.log(`Processing ${eventBuffer.length} buffered events`);
-
-                                // Sort events by timestamp
-                                eventBuffer.sort((a, b) => a.created_at - b.created_at);
-
-                                // Display events in order
-                                eventBuffer.forEach(e => displayMessage(e));
-
-                                // Clear buffer and mark initial load as complete
-                                eventBuffer.length = 0;
-                                isInitialLoad = false;
-                                console.log("Initial load complete, now displaying events in real-time");
-
-                                // Hide loading indicator and show chat container
-                                hideLoadingIndicator();
-                            }, 2000); // Wait 2 seconds to collect initial events
-                        } else {
-                            // After initial load, display events immediately
-                            displayMessage(event);
+                            isInitialLoad = false;
+                            hideLoadingIndicator();
                         }
                     },
                     oneose() {
-                        // End of stored events, process any remaining in buffer
-                        if (isInitialLoad && eventBuffer.length > 0) {
-                            console.log(`End of stored events, processing ${eventBuffer.length} buffered events`);
+                        // End of stored events
+                        console.log("End of stored events");
 
-                            // Sort events by timestamp
-                            eventBuffer.sort((a, b) => a.created_at - b.created_at);
-
-                            // Display events in order
-                            eventBuffer.forEach(e => displayMessage(e));
-
-                            // Clear buffer and mark initial load as complete
-                            eventBuffer.length = 0;
+                        // Make sure loading indicator is hidden
+                        if (isInitialLoad) {
                             isInitialLoad = false;
-                            console.log("Initial load complete, now displaying events in real-time");
-
-                            // Hide loading indicator and show chat container
                             hideLoadingIndicator();
                         }
                     }
