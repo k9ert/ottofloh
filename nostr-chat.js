@@ -14,6 +14,82 @@ document.addEventListener('DOMContentLoaded', function() {
     let userPublicKey = null;
     let relayPool = null;
     let processedEvents = new Set(); // Set to track processed event IDs for deduplication
+    let userHandle = null; // Store the user's handle name
+
+    // Function to request profile information for a pubkey
+    function requestProfileInfo(pubkey) {
+        // Skip if we don't have a relay pool yet
+        if (!relayPool) return;
+
+        console.log("Requesting profile info for:", pubkey);
+
+        try {
+            // Subscribe to profile events for this pubkey
+            relayPool.subscribe(
+                relays,
+                [
+                    {
+                        kinds: [0], // Profile metadata
+                        authors: [pubkey]
+                    }
+                ],
+                {
+                    onevent(event) {
+                        try {
+                            console.log("Received profile event:", event);
+
+                            // Parse the profile information
+                            const profile = JSON.parse(event.content);
+
+                            // Store in cache
+                            window.profileCache[pubkey] = profile;
+
+                            console.log("Updated profile cache for:", pubkey, profile);
+
+                            // Update any existing messages from this pubkey
+                            updateMessagesForPubkey(pubkey, profile);
+                        } catch (error) {
+                            console.error("Error processing profile event:", error);
+                        }
+                    }
+                }
+            );
+        } catch (error) {
+            console.error("Error requesting profile info:", error);
+        }
+    }
+
+    // Function to update existing messages with new profile information
+    function updateMessagesForPubkey(pubkey, profile) {
+        // Find all message elements for this pubkey
+        const messages = document.querySelectorAll(`.chat-message[data-pubkey="${pubkey}"]`);
+
+        if (messages.length === 0) return;
+
+        console.log(`Updating ${messages.length} messages for pubkey:`, pubkey);
+
+        // Determine display name from profile
+        let displayName = null;
+        if (profile.name) {
+            displayName = profile.name;
+        } else if (profile.display_name) {
+            displayName = profile.display_name;
+        } else if (profile.displayName) {
+            displayName = profile.displayName;
+        } else if (profile.nip05) {
+            displayName = profile.nip05;
+        }
+
+        if (!displayName) return;
+
+        // Update each message
+        messages.forEach(message => {
+            const usernameElement = message.querySelector('.chat-username');
+            if (usernameElement) {
+                usernameElement.textContent = displayName;
+            }
+        });
+    }
 
     // Function to reset identity
     function resetIdentity() {
@@ -106,6 +182,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error("Invalid public key format:", userPublicKey);
                         throw new Error("Invalid public key format");
                     }
+
+                    // We'll get the handle from profile events later
+                    userHandle = null;
+                    console.log("User handle will be set from profile events");
 
                     showChatInterface();
 
@@ -257,6 +337,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function initNostrConnection() {
         try {
             console.log("Initializing direct relay connections");
+
+            // Initialize profile cache if not already done
+            if (!window.profileCache) {
+                window.profileCache = {};
+            }
 
             // Create a direct implementation using individual relays
             relayPool = {
@@ -419,88 +504,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             );
 
-            // Send a profile event (kind=0) to help other clients recognize our handle name
+            // We only send kind=1 events as requested
             setTimeout(async () => {
-                try {
-                    console.log("Sending profile event with handle name");
-
-                    // Create profile event
-                    const profileEvent = {
-                        kind: 0, // Profile metadata
-                        created_at: Math.floor(Date.now() / 1000),
-                        tags: [],
-                        content: JSON.stringify({
-                            name: "sattler",
-                            display_name: "sattler",
-                            displayName: "sattler",
-                            nip05: "sattler@ottobrunner-hofflohmarkt.de" // Optional: can be used for verification
-                        }),
-                        pubkey: userPublicKey
-                    };
-
-                    // Sign the profile event
-                    let signedProfileEvent;
-
-                    // Sign with extension or with our private key
-                    if (window.nostr && !userPrivateKey) {
-                        console.log("Signing profile with Nostr extension");
-                        try {
-                            signedProfileEvent = await window.nostr.signEvent(profileEvent);
-                        } catch (signError) {
-                            console.error("Error signing profile with extension:", signError);
-                        }
-                    } else {
-                        // Try different ways to sign based on available API
-                        try {
-                            if (window.finalizeEvent) {
-                                signedProfileEvent = window.finalizeEvent(
-                                    profileEvent,
-                                    hexToBytes(userPrivateKey)
-                                );
-                            } else if (window.signEvent) {
-                                signedProfileEvent = window.signEvent(
-                                    profileEvent,
-                                    userPrivateKey
-                                );
-                            } else if (window.NostrTools && typeof window.NostrTools.finalizeEvent === 'function') {
-                                signedProfileEvent = window.NostrTools.finalizeEvent(
-                                    profileEvent,
-                                    hexToBytes(userPrivateKey)
-                                );
-                            } else if (window.NostrTools && typeof window.NostrTools.signEvent === 'function') {
-                                signedProfileEvent = window.NostrTools.signEvent(
-                                    profileEvent,
-                                    userPrivateKey
-                                );
-                            } else if (window.nostrTools && typeof window.nostrTools.finalizeEvent === 'function') {
-                                signedProfileEvent = window.nostrTools.finalizeEvent(
-                                    profileEvent,
-                                    hexToBytes(userPrivateKey)
-                                );
-                            } else if (window.nostrTools && typeof window.nostrTools.signEvent === 'function') {
-                                signedProfileEvent = window.nostrTools.signEvent(
-                                    profileEvent,
-                                    userPrivateKey
-                                );
-                            }
-                        } catch (signError) {
-                            console.error("Error signing profile event:", signError);
-                        }
-                    }
-
-                    // Publish profile event if signing was successful
-                    if (signedProfileEvent) {
-                        console.log("Publishing profile event:", signedProfileEvent);
-                        try {
-                            await relayPool.publish(relays, signedProfileEvent);
-                            console.log("Profile event published successfully");
-                        } catch (pubError) {
-                            console.error("Error publishing profile event:", pubError);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error creating profile event:", error);
-                }
 
                 // Add a welcome message to the chat locally without sending it to relays
                 console.log("Adding welcome message locally");
@@ -554,6 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'chat-message';
         messageDiv.dataset.eventId = event.id; // Store event ID for reference
+        messageDiv.dataset.pubkey = event.pubkey; // Store pubkey for profile updates
 
         // Check if this is our own message
         if (event.pubkey === userPublicKey) {
@@ -632,16 +638,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // Check if this pubkey is known to be associated with a specific handle
-            // This is a manual mapping for known users
-            const knownHandles = {
-                // Add known pubkeys and their handles here
-                // Example: 'pubkey_hex': 'handle_name'
-                '2ab3178f2db05799129a8b4d81dbdd2e7ec4b3532151732301c0145f20567df4': 'sattler'
-            };
+            // We'll use a cache for profile information to avoid repeated lookups
+            if (!window.profileCache) {
+                window.profileCache = {};
+            }
 
-            if (knownHandles[event.pubkey]) {
-                displayName = knownHandles[event.pubkey];
+            // Check if we already have this profile in cache
+            if (window.profileCache[event.pubkey]) {
+                const profile = window.profileCache[event.pubkey];
+                if (profile.name) {
+                    displayName = profile.name;
+                } else if (profile.display_name) {
+                    displayName = profile.display_name;
+                } else if (profile.displayName) {
+                    displayName = profile.displayName;
+                } else if (profile.nip05) {
+                    displayName = profile.nip05;
+                }
+            } else {
+                // If not in cache, request profile information
+                requestProfileInfo(event.pubkey);
             }
         } catch (error) {
             console.log("Error processing display name:", error);
@@ -699,17 +715,21 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             console.log("Sending message:", content);
 
-            // Create event
+            // Create event with basic tags
+            const eventTags = [['t', CHANNEL_ID]];
+
+            // Add handle name tags only if we have a handle
+            if (userHandle) {
+                eventTags.push(['name', userHandle]);
+                eventTags.push(['display_name', userHandle]);
+                eventTags.push(['d', userHandle]);
+            }
+
+            // Create the event
             const event = {
-                kind: 1,
+                kind: 1, // Only send kind=1 events as requested
                 created_at: Math.floor(Date.now() / 1000),
-                tags: [
-                    ['t', CHANNEL_ID],
-                    // Add handle name information that other clients can use
-                    ['name', 'sattler'],
-                    ['display_name', 'sattler'],
-                    ['d', 'sattler']
-                ],
+                tags: eventTags,
                 content: content,
                 pubkey: userPublicKey // Add pubkey to the event
             };
