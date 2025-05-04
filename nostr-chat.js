@@ -3,8 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Relays to connect to
     const relays = [
         'wss://relay.damus.io',
-        'wss://relay.nostr.band',
-        'wss://nostr.mutinywallet.com'
+        'wss://relay.nostr.band'
     ];
 
     // Chat channel identifier (using a specific tag for this event)
