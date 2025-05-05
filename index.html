@@ -405,6 +405,21 @@
                     (typeof window.NostrTools.signEvent === 'function')));
         };
     </script>
+    <!-- Nostr Chat Modules (Reihenfolge ist wichtig) -->
+    <script>
+        // Initialisiere globale Objekte
+        window.NostrUtils = {};
+        window.NostrCrypto = {};
+        window.NostrProfile = {};
+        window.NostrUI = {};
+        window.NostrConnection = {};
+        window.profileCache = {};
+    </script>
+    <script src="nostr-utils.js"></script>
+    <script src="nostr-crypto.js"></script>
+    <script src="nostr-profile.js"></script>
+    <script src="nostr-ui.js"></script>
+    <script src="nostr-connection.js"></script>
     <script src="nostr-chat.js"></script>
 </head>
 <body>
