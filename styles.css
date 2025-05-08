@@ -228,15 +228,110 @@ h2 {
     transform: scale(1.2);
 }
 
+/* CRP Section Styles */
+.crp-section {
+    background: linear-gradient(to bottom, #ffffff, #f0f8ff);
+    border-left: 5px solid var(--accent-color);
+    padding: 30px;
+    margin: 40px 0;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+}
+
+.crp-section h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    text-align: center;
+    border-bottom: 2px solid var(--accent-color);
+    padding-bottom: 15px;
+}
+
+.crp-container {
+    display: flex;
+    flex-direction: row;
+    gap: 25px;
+    margin: 25px 0;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.crp-image-container {
+    flex: 0 0 40%;
+    max-width: 40%;
+}
+
+.crp-image {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    max-width: 100%;
+    border: 3px solid white;
+}
+
+.crp-image:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.crp-text {
+    flex: 0 0 60%;
+    text-align: left;
+    width: 100%;
+}
+
+.crp-text p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    font-size: 1.05em;
+}
+
+.crp-founder {
+    margin-top: 40px;
+    padding-top: 25px;
+    border-top: 1px solid #ddd;
+}
+
+.crp-founder h4 {
+    color: var(--accent-color);
+    margin-bottom: 20px;
+    font-size: 1.4em;
+    text-align: center;
+}
+
 .crp-link {
     color: var(--primary-color);
     text-decoration: none;
     font-weight: 600;
-    transition: color 0.3s ease;
+    transition: color 0.3s ease, border-bottom 0.3s ease;
+    border-bottom: 1px dotted var(--primary-color);
+    padding-bottom: 2px;
 }
 
 .crp-link:hover {
     color: var(--accent-color);
+    border-bottom: 1px solid var(--accent-color);
+}
+
+/* Responsive styles for CRP section */
+@media (max-width: 768px) {
+    .crp-container {
+        flex-direction: column;
+    }
+
+    .crp-image-container {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 20px;
+    }
+
+    .crp-text {
+        flex: 0 0 100%;
+    }
 }
 
 /* Nostr Chat Styles */
