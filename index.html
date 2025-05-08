@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ottobrunner Hofflohmarkt 2025</title>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <!-- Add Nostr tools library (latest version 2.12.0) -->
     <script src="https://unpkg.com/nostr-tools@2.12.0/lib/nostr.bundle.js"></script>
@@ -27,7 +30,7 @@
         }
 
         // Define a global function to check if the library is ready
-        window.isNostrReady = function() {
+        window.isNostrReady = function () {
             return window.NostrTools !== undefined;
         };
     </script>
@@ -51,6 +54,7 @@
     <script src="nostr-connection.js"></script>
     <script src="nostr-chat.js"></script>
 </head>
+
 <body>
     <div class="container">
         <h1>Ottobrunner Hofflohmarkt 2025</h1>
@@ -77,6 +81,55 @@
                 🗺️ Interaktive Karte öffnen
             </a>
             <p>Nutzen Sie die Google Maps-Ansicht auf Ihrem Smartphone</p>
+        </div>
+
+        <div class="section">
+            <h3>Zum Ausdrucken:</h3>
+            <a href="assets/Ottobrunner Hofflohmarkt 2025.pdf" class="button pdf-button">
+                📄 PDF-Version herunterladen
+            </a>
+            <p>Übersichtliche Druckversion mit Adressliste und Karte</p>
+        </div>
+
+        <h3>CRP-Bangladesch: Rehabilitation für Menschen mit Behinderungen</h3>
+
+        <div class="section">
+            <div class="crp-container">
+                <div class="crp-image-container">
+                    <img src="crp-photos/crp-center.jpg" alt="CRP Zentrum in Bangladesch" class="crp-image">
+                </div>
+                <div class="crp-text">
+                    <p>Das Centre for the Rehabilitation of the Paralysed (CRP) ist eine gemeinnützige Organisation in
+                        Bangladesch, die sich auf die Rehabilitation von Menschen mit Behinderungen spezialisiert hat.
+                        Das CRP bietet umfassende Dienstleistungen an, darunter medizinische Versorgung, Rehabilitation,
+                        Bildung und berufliche Ausbildung.</p>
+                    <p>Der Erlös des Ottobrunner Hofflohmarkts in Form der Teilnahmegbühren kommt vollständig dem
+                        CRP-Bangladesch zugute und unterstützt damit Menschen, die dringend Hilfe benötigen.</p>
+                    <p><a href="https://www.crp-bangladesh.org" target="_blank"
+                            class="crp-link">www.crp-bangladesh.org</a></p>
+                </div>
+            </div>
+
+            <div class="crp-founder">
+                <h4>Valerie Taylor: Die Gründerin des CRP</h4>
+                <div class="crp-container">
+                    <div class="crp-image-container">
+                        <img src="crp-photos/valerie.png" alt="Valerie Taylor, Gründerin des CRP" class="crp-image">
+                    </div>
+                    <div class="crp-text">
+                        <p>Valerie Ann Taylor OBE ist eine britisch-bangladeschische Physiotherapeutin und Humanitärin,
+                            die 1979 das Centre for the Rehabilitation of the Paralysed (CRP) in Bangladesch gründete.
+                        </p>
+                        <p>Nach ihrer Ankunft in Bangladesch im Jahr 1969 erkannte sie den dringenden Bedarf an
+                            Rehabilitationsdiensten für Menschen mit Rückenmarksverletzungen und anderen Behinderungen.
+                            Was als kleine Initiative mit nur vier Patienten begann, hat sich zu einem umfassenden
+                            Netzwerk von Rehabilitationszentren in ganz Bangladesch entwickelt.</p>
+                        <p>Für ihre außergewöhnliche humanitäre Arbeit wurde Valerie Taylor mit zahlreichen
+                            Auszeichnungen geehrt, darunter der Order of the British Empire (OBE) und die
+                            bangladeschische Staatsangehörigkeit als Anerkennung für ihren Beitrag zum Land.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="section stats-section">
@@ -117,9 +170,11 @@
 
             <div id="nostr-login-container">
                 <div class="chat-login-container">
-                    <p>Um am Chat teilzunehmen, benötigen Sie einen Nostr-Schlüssel. Sie können einen neuen Schlüssel erstellen oder eine bestehende Nostr-Erweiterung verwenden.</p>
+                    <p>Um am Chat teilzunehmen, benötigen Sie einen Nostr-Schlüssel. Sie können einen neuen Schlüssel
+                        erstellen oder eine bestehende Nostr-Erweiterung verwenden.</p>
                     <button id="generate-key-button" class="chat-login-button">Neuen Schlüssel erstellen</button>
-                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung anmelden</button>
+                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung
+                        anmelden</button>
                 </div>
             </div>
 
@@ -137,14 +192,15 @@
                 </div>
 
                 <p class="chat-info">
-                    <small>Angemeldet als <span id="reset-identity-trigger">Sie</span>. Ihre Nachrichten werden mit Ihrem Nostr-Schlüssel signiert.</small>
+                    <small>Angemeldet als <span id="reset-identity-trigger">Sie</span>. Ihre Nachrichten werden mit
+                        Ihrem Nostr-Schlüssel signiert.</small>
                 </p>
             </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Teilnehmerentwicklung Diagramm
             const ctx = document.getElementById('participantsChart').getContext('2d');
 
@@ -198,12 +254,12 @@
                             padding: 10,
                             displayColors: false,
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const value = context.raw;
                                     if (value === null) return 'Keine Daten verfügbar';
                                     return `${value} ${value === 1 ? 'Garage' : 'Garagen'}`;
                                 },
-                                title: function(context) {
+                                title: function (context) {
                                     return `Jahr ${context[0].label}`;
                                 }
                             }
@@ -311,4 +367,5 @@
         });
     </script>
 </body>
+
 </html>
