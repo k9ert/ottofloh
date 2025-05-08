@@ -58,19 +58,19 @@ window.NostrProfile.updateMessagesForPubkey = function(pubkey, profile) {
 
     console.log(`Updating ${messages.length} messages for pubkey:`, pubkey);
 
-    // Determine display name from profile
-    let displayName = null;
-    if (profile.name) {
-        displayName = profile.name;
+    // Default to first 6 characters of pubkey
+    let displayName = pubkey.substring(0, 6);
+
+    // Prioritize NIP-05 identifier if available
+    if (profile.nip05) {
+        displayName = profile.nip05;
     } else if (profile.display_name) {
         displayName = profile.display_name;
     } else if (profile.displayName) {
         displayName = profile.displayName;
-    } else if (profile.nip05) {
-        displayName = profile.nip05;
+    } else if (profile.name) {
+        displayName = profile.name;
     }
-
-    if (!displayName) return;
 
     // Update each message
     messages.forEach(message => {
@@ -82,10 +82,11 @@ window.NostrProfile.updateMessagesForPubkey = function(pubkey, profile) {
 };
 
 // Get display name for a pubkey
-window.NostrProfile.getDisplayName = function(event, userPublicKey) {
-    // Default to shortened pubkey
-    const shortenPubkey = window.NostrUtils.shortenPubkey;
+window.NostrProfile.getDisplayName = function(event) {
+    // Default to first 6 characters of pubkey
+    const shortenPubkey = (pubkey) => pubkey.substring(0, 6);
     let displayName = shortenPubkey(event.pubkey);
+    console.log("Displayname for event 1:", displayName);
 
     try {
         // Check for handle name in the event content (might contain profile info)
@@ -93,83 +94,40 @@ window.NostrProfile.getDisplayName = function(event, userPublicKey) {
             // Try to parse profile info from kind=0 events
             try {
                 const profile = JSON.parse(event.content);
-                if (profile.name) {
-                    displayName = profile.name;
+                // Prioritize NIP-05 identifier if available
+                if (profile.nip05) {
+                    displayName = profile.nip05;
                 } else if (profile.display_name) {
                     displayName = profile.display_name;
                 } else if (profile.displayName) {
                     displayName = profile.displayName;
-                } else if (profile.nip05) {
-                    displayName = profile.nip05;
+                } else if (profile.name) {
+                    displayName = profile.name;
                 }
             } catch (e) {
                 console.log("Could not parse profile info:", e);
             }
         }
-
-        // Check for handle name in the event tags
-        if (event.tags && Array.isArray(event.tags)) {
-            // Look for various tag types that might contain identity info
-            for (const tag of event.tags) {
-                // NIP-05 identifier
-                if (tag[0] === 'nip05' && tag[1]) {
-                    displayName = tag[1];
-                    break;
-                }
-
-                // Name tag
-                if (tag[0] === 'name' && tag[1]) {
-                    displayName = tag[1];
-                    break;
-                }
-
-                // Display name tag
-                if ((tag[0] === 'display_name' || tag[0] === 'displayName') && tag[1]) {
-                    displayName = tag[1];
-                    break;
-                }
-
-                // Some clients use 'd' tag for display name
-                if (tag[0] === 'd' && tag[1]) {
-                    displayName = tag[1];
-                    break;
-                }
-            }
-        }
+        console.log("Displayname for event 2:", displayName);
 
         // Check if we already have this profile in cache
         if (window.profileCache[event.pubkey]) {
             const profile = window.profileCache[event.pubkey];
-            if (profile.name) {
-                displayName = profile.name;
+            // Prioritize NIP-05 identifier if available
+            if (profile.nip05) {
+                displayName = profile.nip05;
             } else if (profile.display_name) {
                 displayName = profile.display_name;
             } else if (profile.displayName) {
                 displayName = profile.displayName;
-            } else if (profile.nip05) {
-                displayName = profile.nip05;
+            } else if (profile.name) {
+                displayName = profile.name;
             }
         }
+        console.log("Displayname for event 4:", displayName);
 
-        // If this is our own message and we haven't already set a handle name via tags
-        // Only use "Sie" if we don't have a better name already
-        if (event.pubkey === userPublicKey && displayName === shortenPubkey(event.pubkey)) {
-            // Check if this is a local event with our special tag
-            let hasSpecialTag = false;
-            if (event.tags && Array.isArray(event.tags)) {
-                for (const tag of event.tags) {
-                    if ((tag[0] === 'name' || tag[0] === 'display_name' || tag[0] === 'displayName') && tag[1]) {
-                        hasSpecialTag = true;
-                        break;
-                    }
-                }
-            }
-
-            // If it doesn't have our special tag, use "Sie"
-            if (!hasSpecialTag) {
-                displayName = 'Sie'; // Default for own messages
-            }
-        }
+        // No special handling for own messages anymore - always use the same display name logic
+        // This ensures consistency across all messages
     } catch (error) {
         console.log("Error processing display name:", error);
     }
@@ -187,6 +145,11 @@ window.NostrProfile.addProfileTags = function(event, userPublicKey) {
     if (window.profileCache && window.profileCache[userPublicKey]) {
         const profile = window.profileCache[userPublicKey];
 
+        // Add NIP-05 identifier if available
+        if (profile.nip05) {
+            event.tags.push(['nip05', profile.nip05]);
+        }
+
         if (profile.name) {
             event.tags.push(['name', profile.name]);
         }
@@ -197,17 +160,11 @@ window.NostrProfile.addProfileTags = function(event, userPublicKey) {
             event.tags.push(['display_name', profile.displayName]);
         }
 
-        // Add a default handle if we don't have one
-        if (!profile.name && !profile.display_name && !profile.displayName) {
-            const defaultHandle = 'Benutzer';
-            event.tags.push(['name', defaultHandle]);
-            event.tags.push(['display_name', defaultHandle]);
-        }
+        // No need to add default tags if we don't have any identifier
+        // We'll use the first 6 characters of the pubkey instead
     } else {
-        // If no profile cache, add a default handle
-        const defaultHandle = 'Benutzer';
-        event.tags.push(['name', defaultHandle]);
-        event.tags.push(['display_name', defaultHandle]);
+        // If no profile cache, we don't need to add any tags
+        // We'll use the first 6 characters of the pubkey instead
     }
 
     return event;

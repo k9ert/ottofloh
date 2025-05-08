@@ -194,6 +194,10 @@ window.NostrConnection.processAndPublishSignedEvent = async function(signedEvent
     if (window.profileCache && window.profileCache[userPublicKey]) {
         const profile = window.profileCache[userPublicKey];
 
+        if (profile.nip05) {
+            localEvent.tags.push(['nip05', profile.nip05]);
+        }
+
         if (profile.name) {
             localEvent.tags.push(['name', profile.name]);
         }

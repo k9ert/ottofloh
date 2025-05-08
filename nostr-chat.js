@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const { bytesToHex, hexToBytes } = window.NostrUtils;
     const { generateKeyPair, getPublicKey } = window.NostrCrypto;
     const { initUI, showChatInterface, hideLoadingIndicator, addWelcomeMessage, resetIdentity } = window.NostrUI;
-    const { initRelayPool, subscribeToChannel, sendMessage } = window.NostrConnection;
+    const { sendMessage } = window.NostrConnection;
 
     // Relays to connect to - using only one reliable relay for now
     const relays = [
@@ -145,8 +145,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Nostr connection
     function initNostrConnection() {
         try {
+            console.log("Initializing Nostr connection with SimplePool");
+
             // Initialize relay pool
-            relayPool = initRelayPool();
+            relayPool = window.NostrConnection.initRelayPool();
 
             // Set a maximum loading time
             setTimeout(() => {
@@ -158,7 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000); // 5 seconds maximum loading time
 
             // Subscribe to channel messages
-            subscribeToChannel(relayPool, relays, CHANNEL_ID, userPublicKey, isInitialLoad);
+            window.NostrConnection.subscribeToChannel(relayPool, relays, CHANNEL_ID, window.userPublicKey, isInitialLoad);
 
             // Add a welcome message after the initial load is complete
             let welcomeMessageAdded = false;
@@ -170,13 +172,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(addWelcomeMessageWrapper, 500);
                     return;
                 }
-                
+
                 // Check if we've already added a welcome message
                 if (welcomeMessageAdded) {
                     console.log("Welcome message already added, skipping");
                     return;
                 }
-                
+
                 // Mark as added to prevent duplicates
                 welcomeMessageAdded = true;
 
@@ -195,13 +197,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Send button click handler
     sendButton.addEventListener('click', () => {
-        sendMessage(chatInput.value, userPublicKey, userPrivateKey, CHANNEL_ID, relayPool, relays);
+        sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, relayPool, relays);
     });
 
     // Enter key to send
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            sendMessage(chatInput.value, userPublicKey, userPrivateKey, CHANNEL_ID, relayPool, relays);
+            sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, relayPool, relays);
         }
     });
 

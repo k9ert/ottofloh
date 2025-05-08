@@ -95,7 +95,7 @@ window.NostrUI.createMessageElement = function(event, userPublicKey, relayPool, 
     username.className = 'chat-username';
 
     // Get display name for this event
-    const displayName = window.NostrProfile.getDisplayName(event, userPublicKey);
+    const displayName = window.NostrProfile.getDisplayName(event);
 
     // Store the pubkey as a data attribute for potential future use
     username.dataset.pubkey = event.pubkey;
@@ -185,6 +185,11 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
     if (window.profileCache && window.profileCache[userPublicKey]) {
         const profile = window.profileCache[userPublicKey];
 
+        // Add NIP-05 identifier if available
+        if (profile.nip05) {
+            welcomeTags.push(['nip05', profile.nip05]);
+        }
+
         if (profile.name) {
             welcomeTags.push(['name', profile.name]);
         }
@@ -195,6 +200,7 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
             welcomeTags.push(['display_name', profile.displayName]);
         }
     }
+    // No need to add default tags - we'll use the first 6 characters of the pubkey instead
 
     // Create a local event for display only with a timestamp that ensures it appears at the end
     const welcomeEvent = {
@@ -213,6 +219,35 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
     setTimeout(() => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }, 50);
+};
+
+// Update the username in the chat info
+window.NostrUI.updateUsernameDisplay = function(userPublicKey) {
+    if (!resetIdentityTrigger) return;
+
+    // Default to first 6 characters of pubkey
+    let displayName = userPublicKey.substring(0, 6);
+
+    // Check if we have a profile for this user
+    if (window.profileCache && window.profileCache[userPublicKey]) {
+        const profile = window.profileCache[userPublicKey];
+
+        // Prioritize NIP-05 identifier if available
+        if (profile.nip05) {
+            displayName = profile.nip05;
+        } else if (profile.display_name) {
+            displayName = profile.display_name;
+        } else if (profile.displayName) {
+            displayName = profile.displayName;
+        } else if (profile.name) {
+            displayName = profile.name;
+        }
+    }
+
+    // Update the display
+    resetIdentityTrigger.textContent = displayName;
+
+    console.log("Updated username display to:", displayName);
 };
 
 // Reset identity
@@ -241,6 +276,11 @@ window.NostrUI.resetIdentity = function() {
     if (loginContainer && chatInterface) {
         loginContainer.style.display = 'block';
         chatInterface.style.display = 'none';
+    }
+
+    // Reset the username display to default
+    if (resetIdentityTrigger) {
+        resetIdentityTrigger.textContent = '------';
     }
 
     // Alert the user
