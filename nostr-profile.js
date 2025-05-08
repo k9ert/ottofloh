@@ -253,10 +253,11 @@ window.NostrProfile.requestProfileInfo = function(pubkey, relayPool, relays) {
 window.NostrProfile.updateMessagesForPubkey = function(pubkey, profile) {
     // Find all message elements for this pubkey
     const messages = document.querySelectorAll(`.chat-message[data-pubkey="${pubkey}"]`);
+    const avatarContainers = document.querySelectorAll(`.avatar-container[data-pubkey="${pubkey}"]`);
 
-    if (messages.length === 0) return;
+    if (messages.length === 0 && avatarContainers.length === 0) return;
 
-    console.log(`Updating ${messages.length} messages for pubkey:`, pubkey);
+    console.log(`Updating ${messages.length} messages and ${avatarContainers.length} avatars for pubkey:`, pubkey);
 
     // Default to first 6 characters of pubkey
     let displayName = pubkey.substring(0, 6);
@@ -272,13 +273,54 @@ window.NostrProfile.updateMessagesForPubkey = function(pubkey, profile) {
         displayName = profile.name;
     }
 
-    // Update each message
+    // Update each message username
     messages.forEach(message => {
         const usernameElement = message.querySelector('.chat-username');
         if (usernameElement) {
             usernameElement.textContent = displayName;
         }
     });
+
+    // Update avatar if profile picture is available
+    if (profile.picture) {
+        console.log(`Updating avatar with picture for ${pubkey}:`, profile.picture);
+
+        avatarContainers.forEach(container => {
+            const avatar = container.querySelector('.avatar');
+            if (avatar) {
+                // Clear existing content
+                avatar.innerHTML = '';
+
+                // Create image element
+                const img = document.createElement('img');
+                img.src = profile.picture;
+                img.alt = 'Avatar';
+                img.className = 'avatar-img';
+
+                // Add image to avatar
+                avatar.appendChild(img);
+
+                // Remove any color classes
+                for (let i = 0; i < 10; i++) {
+                    avatar.classList.remove(`avatar-color-${i}`);
+                }
+            }
+        });
+    } else {
+        console.log(`No profile picture available for ${pubkey}, using initial`);
+
+        // Update avatar with initial if no picture
+        avatarContainers.forEach(container => {
+            const avatar = container.querySelector('.avatar');
+            if (avatar) {
+                // If there's no img element, update the text content
+                if (!avatar.querySelector('img')) {
+                    const initial = displayName.charAt(0).toUpperCase();
+                    avatar.textContent = initial;
+                }
+            }
+        });
+    }
 };
 
 // Get display name for a pubkey

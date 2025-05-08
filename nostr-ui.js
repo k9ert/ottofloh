@@ -94,6 +94,53 @@ window.NostrUI.createMessageElement = function(event, userPublicKey, relayPool, 
         messageDiv.classList.add('others');
     }
 
+    // Create message container with avatar and content
+    const messageContainer = document.createElement('div');
+    messageContainer.className = 'message-container';
+
+    // Create avatar container
+    const avatarContainer = document.createElement('div');
+    avatarContainer.className = 'avatar-container';
+    avatarContainer.dataset.pubkey = event.pubkey; // Store pubkey for profile updates
+
+    // Create avatar image or placeholder
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+
+    // Check if we have a profile picture
+    let profilePicture = null;
+    if (window.profileCache && window.profileCache[event.pubkey]) {
+        const profile = window.profileCache[event.pubkey];
+        if (profile.picture) {
+            profilePicture = profile.picture;
+        }
+    }
+
+    if (profilePicture) {
+        // Create an image element for the profile picture
+        const img = document.createElement('img');
+        img.src = profilePicture;
+        img.alt = 'Avatar';
+        img.className = 'avatar-img';
+        avatar.appendChild(img);
+    } else {
+        // Use first letter of display name or pubkey as placeholder
+        const displayName = window.NostrProfile.getDisplayName(event);
+        const initial = displayName.charAt(0).toUpperCase();
+        avatar.textContent = initial;
+
+        // Add a random background color based on pubkey
+        const colorIndex = parseInt(event.pubkey.substring(0, 6), 16) % 10;
+        avatar.classList.add(`avatar-color-${colorIndex}`);
+    }
+
+    avatarContainer.appendChild(avatar);
+    messageContainer.appendChild(avatarContainer);
+
+    // Create content container
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'content-container';
+
     // Create header with username (handle name or shortened pubkey) and timestamp
     const header = document.createElement('div');
     header.className = 'chat-header';
@@ -135,11 +182,18 @@ window.NostrUI.createMessageElement = function(event, userPublicKey, relayPool, 
 
     // Create message content
     const content = document.createElement('div');
+    content.className = 'chat-content';
     content.textContent = event.content;
 
-    // Add to message div
-    messageDiv.appendChild(header);
-    messageDiv.appendChild(content);
+    // Add header and content to content container
+    contentContainer.appendChild(header);
+    contentContainer.appendChild(content);
+
+    // Add content container to message container
+    messageContainer.appendChild(contentContainer);
+
+    // Add message container to message div
+    messageDiv.appendChild(messageContainer);
 
     return messageDiv;
 };
