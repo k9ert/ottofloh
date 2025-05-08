@@ -6,14 +6,8 @@
     <title>Ottobrunner Hofflohmarkt 2025</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-    <!-- Add Nostr tools library (specific version) -->
-    <script>
-        // Create a global object to hold the Nostr tools
-        window.nostrTools = {};
-    </script>
-    <!-- Use a CDN that provides a specific version known to work -->
-    <script src="https://unpkg.com/nostr-tools@1.8.0/lib/nostr.bundle.js"></script>
-    <!-- Add a direct script for WebSocket polyfill if needed -->
+    <!-- Add Nostr tools library (latest version 2.12.0) -->
+    <script src="https://unpkg.com/nostr-tools@2.12.0/lib/nostr.bundle.js"></script>
     <script>
         // Ensure WebSocket is available
         if (typeof WebSocket === 'undefined') {
@@ -22,53 +16,19 @@
             console.log("WebSocket is available");
         }
 
-        // Copy the library functions to our global object and make them available globally
+        // Check if the library is loaded correctly
         if (window.NostrTools) {
-            console.log("NostrTools loaded successfully");
-
-            // Make sure we have the essential functions
-            if (!window.NostrTools.signEvent && window.NostrTools.signEvent) {
-                window.NostrTools.finalizeEvent = window.NostrTools.signEvent;
-            }
-
-            // Copy all functions to our global object
-            for (const key in window.NostrTools) {
-                window.nostrTools[key] = window.NostrTools[key];
-            }
+            console.log("NostrTools v2 loaded successfully");
 
             // Log available functions for debugging
             console.log("Available NostrTools functions:", Object.keys(window.NostrTools));
-
-            // Add direct global access to critical functions
-            if (!window.getPublicKey && window.NostrTools.getPublicKey) {
-                window.getPublicKey = window.NostrTools.getPublicKey;
-            }
-
-            if (!window.generatePrivateKey && window.NostrTools.generatePrivateKey) {
-                window.generatePrivateKey = window.NostrTools.generatePrivateKey;
-            }
-
-            if (!window.finalizeEvent && window.NostrTools.finalizeEvent) {
-                window.finalizeEvent = window.NostrTools.finalizeEvent;
-            }
-
-            if (!window.signEvent && window.NostrTools.signEvent) {
-                window.signEvent = window.NostrTools.signEvent;
-            }
-
-            if (!window.relayInit && window.NostrTools.relayInit) {
-                window.relayInit = window.NostrTools.relayInit;
-            }
         } else {
             console.error("NostrTools not loaded correctly");
         }
 
         // Define a global function to check if the library is ready
         window.isNostrReady = function() {
-            return (window.NostrTools &&
-                   (typeof window.NostrTools.getPublicKey === 'function') &&
-                   ((typeof window.NostrTools.finalizeEvent === 'function') ||
-                    (typeof window.NostrTools.signEvent === 'function')));
+            return window.NostrTools !== undefined;
         };
     </script>
     <!-- Nostr Chat Modules (Reihenfolge ist wichtig) -->
