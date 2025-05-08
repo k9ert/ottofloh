@@ -310,6 +310,64 @@
             transform: translateY(-2px);
         }
 
+        .stats-section {
+            background: linear-gradient(to bottom, #f8f9fa, #e9f0f8);
+            border-left: 5px solid var(--primary-color);
+        }
+
+        .lead-text {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 25px;
+        }
+
+        .stats-highlight {
+            background-color: var(--primary-color);
+            color: white;
+            display: inline-block;
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin: 10px 0 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stats-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            display: block;
+            line-height: 1;
+        }
+
+        .stats-label {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .stats-description {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #444;
+        }
+
+        .stats-footnote {
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+            margin-top: 15px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin: 20px auto;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 15px;
@@ -415,6 +473,9 @@
         window.NostrConnection = {};
         window.profileCache = {};
     </script>
+    <!-- Chart.js für Diagramme -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <script src="nostr-utils.js"></script>
     <script src="nostr-crypto.js"></script>
     <script src="nostr-profile.js"></script>
@@ -446,6 +507,26 @@
                 📄 PDF-Version herunterladen
             </a>
             <p>Übersichtliche Druckversion mit Adressliste und Karte</p>
+        </div>
+
+        <div class="section stats-section">
+            <h3>Wachsender Erfolg seit 2013!</h3>
+            <p class="lead-text">Der Ottobrunner Hofflohmarkt erfreut sich immer größerer Beliebtheit</p>
+            <div class="stats-highlight">
+                <span class="stats-number">69</span>
+                <span class="stats-label">Garagen im Jahr 2024</span>
+            </div>
+            <p class="stats-description">
+                Von 14 Garagen im Jahr 2018 auf beeindruckende 69 Teilnehmer in 2024 – unser Hofflohmarkt wächst stetig!
+                Seien Sie 2025 dabei und werden Sie Teil dieser Erfolgsgeschichte.
+            </p>
+            <div class="chart-container">
+                <canvas id="participantsChart"></canvas>
+            </div>
+            <p class="stats-footnote">
+                Seit 2019 verzeichnen wir einen kontinuierlichen Anstieg der Teilnehmerzahlen.
+                Sichern Sie sich jetzt Ihren Platz für 2025!
+            </p>
         </div>
 
         <div class="section">
@@ -488,6 +569,97 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Teilnehmerentwicklung Diagramm
+            const ctx = document.getElementById('participantsChart').getContext('2d');
+
+            // Daten für das Diagramm
+            const years = ['2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'];
+            const participants = [44, 22, 23, 19, 14, 14, 39, 34, 39, null, 65, 69];
+
+            // Farben für das Diagramm
+            const gradientFill = ctx.createLinearGradient(0, 0, 0, 300);
+            gradientFill.addColorStop(0, 'rgba(26, 115, 232, 0.6)');
+            gradientFill.addColorStop(1, 'rgba(26, 115, 232, 0.1)');
+
+            // Diagramm erstellen
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Teilnehmende Garagen',
+                        data: participants,
+                        borderColor: '#1a73e8',
+                        backgroundColor: gradientFill,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#1a73e8',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    family: "'Open Sans', sans-serif",
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#333',
+                            bodyColor: '#333',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    if (value === null) return 'Keine Daten verfügbar';
+                                    return `${value} ${value === 1 ? 'Garage' : 'Garagen'}`;
+                                },
+                                title: function(context) {
+                                    return `Jahr ${context[0].label}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Open Sans', sans-serif"
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Open Sans', sans-serif"
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Karussell für Bilder
             const container = document.getElementById('carousel-container');
             const dotsContainer = document.getElementById('carousel-dots');
             let currentSlide = 0;
