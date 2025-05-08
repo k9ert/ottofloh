@@ -296,7 +296,7 @@ h2 {
     border-top: 1px solid #ddd;
 }
 
-.crp-founder h4 {
+.crp-founder h4, .crp-donation h4 {
     color: var(--accent-color);
     margin-bottom: 20px;
     font-size: 1.4em;
@@ -315,6 +315,29 @@ h2 {
 .crp-link:hover {
     color: var(--accent-color);
     border-bottom: 1px solid var(--accent-color);
+}
+
+.crp-donation {
+    margin-top: 40px;
+    padding: 25px;
+    background-color: rgba(240, 248, 255, 0.7);
+    border-radius: 10px;
+    border-left: 3px solid var(--accent-color);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.donation-info {
+    text-align: left;
+}
+
+.donation-info p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.donation-info strong {
+    color: var(--primary-color);
+    font-weight: 600;
 }
 
 /* Responsive styles for CRP section */
