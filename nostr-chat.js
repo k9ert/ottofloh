@@ -6,9 +6,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const { initUI, showChatInterface, hideLoadingIndicator, addWelcomeMessage, resetIdentity } = window.NostrUI;
     const { sendMessage } = window.NostrConnection;
 
-    // Relays to connect to - using only one reliable relay for now
+    // Relays to connect to - using multiple relays to increase the chances of finding profile information
     const relays = [
-        'wss://relay.damus.io'
+        'wss://relay.damus.io',
+        'wss://relay.nostr.band',
+        'wss://nos.lol',
+        'wss://relay.snort.social'
     ];
 
     // Chat channel identifier (using a specific tag for this event)
@@ -17,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // State variables
     window.userPrivateKey = null;
     window.userPublicKey = null;
-    let relayPool = null;
+    window.relayPool = null;
+    window.relays = relays; // Make relays globally available
     let isInitialLoad = true;
 
     // DOM Elements
@@ -298,7 +302,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Initializing Nostr connection with SimplePool");
 
             // Initialize relay pool
-            relayPool = window.NostrConnection.initRelayPool();
+            window.relayPool = window.NostrConnection.initRelayPool();
+            console.log("Relay pool initialized:", window.relayPool);
 
             // Set a maximum loading time
             setTimeout(() => {
@@ -310,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 5000); // 5 seconds maximum loading time
 
             // Subscribe to channel messages
-            window.NostrConnection.subscribeToChannel(relayPool, relays, CHANNEL_ID, window.userPublicKey, isInitialLoad);
+            window.NostrConnection.subscribeToChannel(window.relayPool, window.relays, CHANNEL_ID, window.userPublicKey, isInitialLoad);
 
             // Add a welcome message after the initial load is complete
             let welcomeMessageAdded = false;
@@ -347,13 +352,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Send button click handler
     sendButton.addEventListener('click', () => {
-        sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, relayPool, relays);
+        sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, window.relayPool, window.relays);
     });
 
     // Enter key to send
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, relayPool, relays);
+            sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, window.relayPool, window.relays);
         }
     });
 

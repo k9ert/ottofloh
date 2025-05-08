@@ -65,8 +65,15 @@ window.NostrUI.displayMessageInOrder = function(event, userPublicKey, relayPool,
         window.NostrUI.processedEvents.add(event.id);
     }
 
+    // Use global userPublicKey if available
+    const useUserPublicKey = window.userPublicKey || userPublicKey;
+
+    // Use global relay pool and relays if available
+    const useRelayPool = window.relayPool || relayPool;
+    const useRelays = window.relays || relays;
+
     // Create the message element
-    const messageDiv = window.NostrUI.createMessageElement(event, userPublicKey, relayPool, relays);
+    const messageDiv = window.NostrUI.createMessageElement(event, useUserPublicKey, useRelayPool, useRelays);
 
     // Find the correct position to insert the message based on timestamp
     window.NostrUI.insertMessageInOrder(messageDiv, event.created_at);
@@ -102,7 +109,16 @@ window.NostrUI.createMessageElement = function(event, userPublicKey, relayPool, 
 
     // If not in cache, request profile information
     if (!window.profileCache[event.pubkey]) {
-        window.NostrProfile.requestProfileInfo(event.pubkey, relayPool, relays);
+        // Use global relay pool and relays if available, otherwise use the ones passed as parameters
+        const useRelayPool = window.relayPool || relayPool;
+        const useRelays = window.relays || relays;
+
+        if (useRelayPool) {
+            console.log(`Requesting profile info for ${event.pubkey} from createMessageElement`);
+            window.NostrProfile.requestProfileInfo(event.pubkey, useRelayPool, useRelays);
+        } else {
+            console.warn(`Cannot request profile for ${event.pubkey}: no relay pool available`);
+        }
     }
 
     username.textContent = displayName;
@@ -213,7 +229,14 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
     };
 
     // Display the welcome message locally
-    window.NostrUI.displayMessageInOrder(welcomeEvent, userPublicKey);
+    // Use global userPublicKey if available
+    const useUserPublicKey = window.userPublicKey || userPublicKey;
+
+    // Use global relay pool and relays if available
+    const useRelayPool = window.relayPool;
+    const useRelays = window.relays;
+
+    window.NostrUI.displayMessageInOrder(welcomeEvent, useUserPublicKey, useRelayPool, useRelays);
 
     // Scroll to bottom to ensure the welcome message is visible
     setTimeout(() => {
@@ -223,30 +246,66 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
 
 // Update the username in the chat info
 window.NostrUI.updateUsernameDisplay = function(userPublicKey) {
-    if (!resetIdentityTrigger) return;
+    console.log("Updating username display for pubkey:", userPublicKey);
+
+    const resetIdentityTrigger = document.getElementById('reset-identity-trigger');
+    if (!resetIdentityTrigger) {
+        console.warn("Cannot update username display: reset-identity-trigger element not found");
+        return;
+    }
+
+    if (!userPublicKey) {
+        console.warn("Cannot update username display: userPublicKey is undefined");
+        resetIdentityTrigger.textContent = '------';
+        return;
+    }
 
     // Default to first 6 characters of pubkey
     let displayName = userPublicKey.substring(0, 6);
+    console.log("Initial display name:", displayName);
 
     // Check if we have a profile for this user
     if (window.profileCache && window.profileCache[userPublicKey]) {
         const profile = window.profileCache[userPublicKey];
+        console.log("Found profile in cache:", profile);
 
         // Prioritize NIP-05 identifier if available
         if (profile.nip05) {
             displayName = profile.nip05;
+            console.log("Using nip05 from profile:", displayName);
         } else if (profile.display_name) {
             displayName = profile.display_name;
+            console.log("Using display_name from profile:", displayName);
         } else if (profile.displayName) {
             displayName = profile.displayName;
+            console.log("Using displayName from profile:", displayName);
         } else if (profile.name) {
             displayName = profile.name;
+            console.log("Using name from profile:", displayName);
+        } else {
+            console.log("No usable name fields found in profile, using pubkey:", displayName);
+        }
+    } else {
+        console.log("No profile found in cache for pubkey:", userPublicKey);
+
+        // Request profile information if not in cache
+        if (window.NostrProfile && typeof window.NostrProfile.requestProfileInfo === 'function') {
+            console.log("Requesting profile info for pubkey:", userPublicKey);
+
+            // Get the relay pool and relays from the global scope
+            const relayPool = window.relayPool;
+            const relays = window.relays || ['wss://relay.damus.io'];
+
+            if (relayPool) {
+                window.NostrProfile.requestProfileInfo(userPublicKey, relayPool, relays);
+            } else {
+                console.warn("Cannot request profile: relayPool not available");
+            }
         }
     }
 
     // Update the display
     resetIdentityTrigger.textContent = displayName;
-
     console.log("Updated username display to:", displayName);
 };
 
