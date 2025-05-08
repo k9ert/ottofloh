@@ -5,409 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ottobrunner Hofflohmarkt 2025</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #1a73e8;
-            --accent-color: #4CAF50;
-            --text-color: #333;
-            --background-color: #f8f9fa;
-            --card-background: #ffffff;
-            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        body {
-            font-family: 'Open Sans', sans-serif;
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-            color: var(--text-color);
-            background-color: var(--background-color);
-        }
-
-        .container {
-            text-align: center;
-        }
-
-        h1, h2, h3 {
-            font-family: 'Playfair Display', serif;
-            color: var(--text-color);
-        }
-
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 0.2em;
-            color: var(--primary-color);
-        }
-
-        h2 {
-            font-size: 1.8em;
-            margin-top: 0;
-            color: var(--accent-color);
-        }
-
-        .section {
-            background: var(--card-background);
-            border-radius: 15px;
-            padding: 30px;
-            margin: 40px 0;
-            box-shadow: var(--shadow);
-            transition: transform 0.2s ease;
-        }
-
-        .section:hover {
-            transform: translateY(-5px);
-        }
-
-        .button {
-            display: inline-block;
-            padding: 15px 30px;
-            font-size: 18px;
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            margin: 20px 10px;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow);
-        }
-
-        .pdf-button {
-            background-color: var(--accent-color);
-        }
-
-        .map-button {
-            background-color: var(--primary-color);
-        }
-
-        .register-button {
-            background-color: #27ae60;
-            font-weight: bold;
-        }
-
-        .highlight-section {
-            border: 2px solid #27ae60;
-            background-color: rgba(39, 174, 96, 0.1);
-        }
-
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .carousel {
-            max-width: 900px;
-            position: relative;
-            margin: 40px auto;
-            overflow: hidden;
-            border-radius: 15px;
-            box-shadow: var(--shadow);
-        }
-
-        .carousel-container {
-            display: flex;
-            transition: transform 0.5s ease-in-out;
-        }
-
-        .carousel-slide {
-            min-width: 100%;
-            box-sizing: border-box;
-        }
-
-        .carousel-slide img {
-            width: 100%;
-            height: auto;
-            border-radius: 15px;
-        }
-
-        .carousel-button {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--primary-color);
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .carousel-button:hover {
-            background: white;
-            transform: translateY(-50%) scale(1.1);
-        }
-
-        .carousel-button.prev {
-            left: 20px;
-        }
-
-        .carousel-button.next {
-            right: 20px;
-        }
-
-        .carousel-dots {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-            gap: 10px;
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ddd;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .dot:hover {
-            background: #bbb;
-        }
-
-        .dot.active {
-            background: var(--primary-color);
-            transform: scale(1.2);
-        }
-
-        .crp-link {
-            color: var(--primary-color);
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-
-        .crp-link:hover {
-            color: var(--accent-color);
-        }
-
-        /* Nostr Chat Styles */
-        .chat-container {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 10px;
-            background-color: #f9f9f9;
-            text-align: left;
-        }
-
-        .loading-indicator {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-
-        .loading-indicator p {
-            margin-top: 10px;
-            color: #555;
-            font-size: 14px;
-        }
-
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #4CAF50;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .chat-message {
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .chat-message.others {
-            background-color: #e9e9e9;
-            align-self: flex-start;
-            margin-right: auto;
-        }
-
-        .chat-message.self {
-            background-color: var(--primary-color);
-            color: white;
-            align-self: flex-end;
-            margin-left: auto;
-        }
-
-        .chat-input-container {
-            display: flex;
-            margin-top: 10px;
-            gap: 10px;
-        }
-
-        .chat-input {
-            flex-grow: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 25px;
-            font-family: 'Open Sans', sans-serif;
-        }
-
-        .chat-send-button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .chat-send-button:hover {
-            background-color: #0d5bbc;
-            transform: translateY(-2px);
-        }
-
-        .chat-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .chat-username {
-            font-weight: bold;
-            margin-right: 5px;
-        }
-
-        .chat-timestamp {
-            font-size: 0.8em;
-            color: #777;
-        }
-
-        .chat-login-container {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .chat-login-button {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 25px;
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 10px;
-        }
-
-        .chat-login-button:hover {
-            background-color: #3d8b40;
-            transform: translateY(-2px);
-        }
-
-        .stats-section {
-            background: linear-gradient(to bottom, #f8f9fa, #e9f0f8);
-            border-left: 5px solid var(--primary-color);
-        }
-
-        .lead-text {
-            font-size: 1.2em;
-            color: #555;
-            margin-bottom: 25px;
-        }
-
-        .stats-highlight {
-            background-color: var(--primary-color);
-            color: white;
-            display: inline-block;
-            padding: 15px 25px;
-            border-radius: 10px;
-            margin: 10px 0 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .stats-number {
-            font-size: 2.5em;
-            font-weight: bold;
-            display: block;
-            line-height: 1;
-        }
-
-        .stats-label {
-            font-size: 1em;
-            opacity: 0.9;
-        }
-
-        .stats-description {
-            font-size: 1.1em;
-            line-height: 1.6;
-            margin-bottom: 25px;
-            color: #444;
-        }
-
-        .stats-footnote {
-            font-size: 0.9em;
-            color: #666;
-            font-style: italic;
-            margin-top: 15px;
-        }
-
-        .chart-container {
-            position: relative;
-            height: 300px;
-            width: 100%;
-            margin: 20px auto;
-            background-color: rgba(255, 255, 255, 0.7);
-            border-radius: 8px;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 15px;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            h2 {
-                font-size: 1.5em;
-            }
-
-            .section {
-                padding: 20px;
-                margin: 20px 0;
-            }
-
-            .button {
-                padding: 12px 24px;
-                font-size: 16px;
-            }
-
-            .carousel-button {
-                width: 40px;
-                height: 40px;
-                font-size: 20px;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <!-- Add Nostr tools library (specific version) -->
     <script>
         // Create a global object to hold the Nostr tools
@@ -503,6 +101,7 @@
             <p><a href="https://www.crp-bangladesh.org" target="_blank" class="crp-link">www.crp-bangladesh.org</a></p>
         </div>
 
+        <!--
         <div class="section highlight-section">
             <h3>Jetzt anmelden!</h3>
             <a href="registration.html" class="button register-button">
@@ -510,6 +109,7 @@
             </a>
             <p>Melden Sie sich jetzt als Verkäufer für den Hofflohmarkt an</p>
         </div>
+        -->
 
         <div class="section">
             <h3>Für unterwegs:</h3>
@@ -517,14 +117,6 @@
                 🗺️ Interaktive Karte öffnen
             </a>
             <p>Nutzen Sie die Google Maps-Ansicht auf Ihrem Smartphone</p>
-        </div>
-
-        <div class="section">
-            <h3>Zum Ausdrucken:</h3>
-            <a href="assets/Ottobrunner Hofflohmarkt 2025.pdf" class="button pdf-button">
-                📄 PDF-Version herunterladen
-            </a>
-            <p>Übersichtliche Druckversion mit Adressliste und Karte</p>
         </div>
 
         <div class="section stats-section">
@@ -560,27 +152,33 @@
         </div>
 
         <div class="section">
-            <h3>Flohmarkt-Chat:</h3>
-            <p>Tauschen <span id="reset-identity-trigger">Sie</span> sich mit anderen Besuchern aus oder stellen Sie Fragen zum Flohmarkt</p>
+            <h3>Nostr Chat</h3>
+            <p>Chatten Sie mit anderen Besuchern und Verkäufern des Hofflohmarkts</p>
 
-            <div id="nostr-login-container" class="chat-login-container">
-                <button id="generate-key-button" class="chat-login-button">Neuen Chat-Schlüssel erstellen</button>
-                <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung anmelden</button>
+            <div id="nostr-login-container">
+                <div class="chat-login-container">
+                    <p>Um am Chat teilzunehmen, benötigen Sie einen Nostr-Schlüssel. Sie können einen neuen Schlüssel erstellen oder eine bestehende Nostr-Erweiterung verwenden.</p>
+                    <button id="generate-key-button" class="chat-login-button">Neuen Schlüssel erstellen</button>
+                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung anmelden</button>
+                </div>
             </div>
 
             <div id="nostr-chat-interface" style="display: none;">
                 <div id="loading-indicator" class="loading-indicator">
                     <div class="spinner"></div>
-                    <p>Nachrichten werden geladen...</p>
+                    <p>Verbindung wird hergestellt und Nachrichten werden geladen...</p>
                 </div>
-                <div id="chat-container" class="chat-container">
-                    <!-- Messages will be inserted here by JavaScript -->
-                </div>
+
+                <div id="chat-container" class="chat-container"></div>
 
                 <div class="chat-input-container">
                     <input type="text" id="chat-input" class="chat-input" placeholder="Nachricht eingeben...">
                     <button id="chat-send-button" class="chat-send-button">Senden</button>
                 </div>
+
+                <p class="chat-info">
+                    <small>Angemeldet als <span id="reset-identity-trigger">Sie</span>. Ihre Nachrichten werden mit Ihrem Nostr-Schlüssel signiert.</small>
+                </p>
             </div>
         </div>
     </div>
@@ -682,50 +280,74 @@
             const dotsContainer = document.getElementById('carousel-dots');
             let currentSlide = 0;
 
-            // List of images (you'll need to add your actual image paths)
+            // Bilder für das Karussell
             const images = [
                 'photos/image1.png',
                 'photos/image2.png',
                 'photos/image3.jpg',
                 'photos/image4.jpg',
                 'photos/image5.jpg',
-                'photos/image6.jpg',
-                // Add more images as needed
+                'photos/image6.jpg'
             ];
 
-            // Create slides and dots
-            images.forEach((img, index) => {
+            // Bilder und Punkte einfügen
+            images.forEach((image, index) => {
+                // Slide erstellen
                 const slide = document.createElement('div');
                 slide.className = 'carousel-slide';
-                slide.innerHTML = `<img src="${img}" alt="Flohmarkt Impression ${index + 1}">`;
+
+                // Bild erstellen
+                const img = document.createElement('img');
+                img.src = image;
+                img.alt = `Flohmarkt Impression ${index + 1}`;
+
+                // Zum Slide hinzufügen
+                slide.appendChild(img);
+
+                // Zum Container hinzufügen
                 container.appendChild(slide);
 
+                // Punkt erstellen
                 const dot = document.createElement('div');
                 dot.className = 'dot';
                 if (index === 0) dot.classList.add('active');
-                dot.addEventListener('click', () => goToSlide(index));
+
+                // Event-Listener für den Punkt
+                dot.addEventListener('click', () => {
+                    goToSlide(index);
+                });
+
+                // Zum Dots-Container hinzufügen
                 dotsContainer.appendChild(dot);
             });
 
-            function updateSlidePosition() {
+            // Funktion zum Wechseln der Slides
+            function goToSlide(n) {
+                currentSlide = n;
                 container.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+                // Aktiven Punkt aktualisieren
                 document.querySelectorAll('.dot').forEach((dot, index) => {
                     dot.classList.toggle('active', index === currentSlide);
                 });
             }
 
-            function goToSlide(n) {
-                currentSlide = n;
-                if (currentSlide >= images.length) currentSlide = 0;
-                if (currentSlide < 0) currentSlide = images.length - 1;
-                updateSlidePosition();
-            }
+            // Event-Listener für die Buttons
+            document.querySelector('.carousel-button.prev').addEventListener('click', () => {
+                currentSlide = (currentSlide - 1 + images.length) % images.length;
+                goToSlide(currentSlide);
+            });
 
-            document.querySelector('.prev').addEventListener('click', () => goToSlide(currentSlide - 1));
-            document.querySelector('.next').addEventListener('click', () => goToSlide(currentSlide + 1));
+            document.querySelector('.carousel-button.next').addEventListener('click', () => {
+                currentSlide = (currentSlide + 1) % images.length;
+                goToSlide(currentSlide);
+            });
 
-            // Auto advance slides every 5 seconds
-            setInterval(() => goToSlide(currentSlide + 1), 5000);
+            // Automatischer Wechsel alle 5 Sekunden
+            setInterval(() => {
+                currentSlide = (currentSlide + 1) % images.length;
+                goToSlide(currentSlide);
+            }, 5000);
         });
     </script>
 </body>
