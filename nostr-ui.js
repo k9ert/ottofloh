@@ -194,29 +194,18 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
     // Add a welcome message to the chat locally without sending it to relays
     console.log("Initial load complete, adding welcome message locally");
 
-    // Create tags for the welcome message
+    // Create tags for the welcome message - only include the channel tag
     const welcomeTags = [['t', CHANNEL_ID]];
 
-    // Add handle name tags if we have profile info
-    if (window.profileCache && window.profileCache[userPublicKey]) {
-        const profile = window.profileCache[userPublicKey];
+    // We don't need to add any profile-related tags to the event
+    // This ensures consistent behavior for all users, regardless of whether they have NIP-05 or not
+    console.log("Not adding any profile tags to welcome message to ensure consistent behavior");
 
-        // Add NIP-05 identifier if available
-        if (profile.nip05) {
-            welcomeTags.push(['nip05', profile.nip05]);
-        }
-
-        if (profile.name) {
-            welcomeTags.push(['name', profile.name]);
-        }
-
-        if (profile.display_name) {
-            welcomeTags.push(['display_name', profile.display_name]);
-        } else if (profile.displayName) {
-            welcomeTags.push(['display_name', profile.displayName]);
-        }
+    // We still request profile info for display purposes, but we don't add it to the event tags
+    if (window.relayPool && window.relays && userPublicKey) {
+        console.log("Requesting profile info for display purposes only");
+        window.NostrProfile.requestProfileInfo(userPublicKey, window.relayPool, window.relays);
     }
-    // No need to add default tags - we'll use the first 6 characters of the pubkey instead
 
     // Create a local event for display only with a timestamp that ensures it appears at the end
     const welcomeEvent = {

@@ -371,6 +371,12 @@ window.NostrProfile.getDisplayName = function(event) {
             }
         } else {
             console.log(`No profile found in cache for ${event.pubkey}`);
+
+            // Request profile information if not in cache
+            if (window.relayPool && window.relays && event.pubkey) {
+                console.log(`Requesting profile info for ${event.pubkey} from getDisplayName`);
+                window.NostrProfile.requestProfileInfo(event.pubkey, window.relayPool, window.relays);
+            }
         }
 
         console.log(`Final display name for ${event.id}: ${displayName}`);
@@ -387,30 +393,23 @@ window.NostrProfile.addProfileTags = function(event, userPublicKey) {
         event.tags = [];
     }
 
-    // Add handle name tags from profile cache if available
-    if (window.profileCache && window.profileCache[userPublicKey]) {
-        const profile = window.profileCache[userPublicKey];
+    // We don't need to add any profile-related tags to the event
+    // This ensures consistent behavior for all users, regardless of whether they have NIP-05 or not
+    console.log("Not adding any profile tags to event to ensure consistent behavior");
 
-        // Add NIP-05 identifier if available
-        if (profile.nip05) {
-            event.tags.push(['nip05', profile.nip05]);
+    // Just make sure we have the required tag for the channel
+    let hasChannelTag = false;
+    for (const tag of event.tags) {
+        if (tag[0] === 't') {
+            hasChannelTag = true;
+            break;
         }
+    }
 
-        if (profile.name) {
-            event.tags.push(['name', profile.name]);
-        }
-
-        if (profile.display_name) {
-            event.tags.push(['display_name', profile.display_name]);
-        } else if (profile.displayName) {
-            event.tags.push(['display_name', profile.displayName]);
-        }
-
-        // No need to add default tags if we don't have any identifier
-        // We'll use the first 6 characters of the pubkey instead
-    } else {
-        // If no profile cache, we don't need to add any tags
-        // We'll use the first 6 characters of the pubkey instead
+    // If no channel tag is found, add a default one
+    if (!hasChannelTag) {
+        console.log("No channel tag found, adding default channel tag");
+        event.tags.push(['t', 'ottobrunner-hofflohmarkt']);
     }
 
     return event;

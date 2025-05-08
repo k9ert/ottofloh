@@ -98,25 +98,50 @@ window.NostrCrypto.signEvent = async function(event, privateKey) {
     try {
         const hexToBytes = window.NostrUtils.hexToBytes;
 
+        // Make a copy of the event to avoid modifying the original
+        const eventToSign = { ...event };
+
+        // Calculate event ID if needed
+        if (!eventToSign.id) {
+            console.log("Calculating event ID before signing");
+
+            // Try different ways to calculate event ID based on available API
+            if (window.NostrTools && typeof window.NostrTools.getEventHash === 'function') {
+                console.log("Using NostrTools.getEventHash");
+                eventToSign.id = window.NostrTools.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else if (window.getEventHash) {
+                console.log("Using global getEventHash");
+                eventToSign.id = window.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else if (window.nostrTools && typeof window.nostrTools.getEventHash === 'function') {
+                console.log("Using nostrTools.getEventHash");
+                eventToSign.id = window.nostrTools.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else {
+                console.warn("No method found to calculate event ID");
+            }
+        }
+
         // Try different ways to sign based on available API
         if (window.finalizeEvent) {
             console.log("Signing with global finalizeEvent");
-            return window.finalizeEvent(event, hexToBytes(privateKey));
+            return window.finalizeEvent(eventToSign, hexToBytes(privateKey));
         } else if (window.signEvent) {
             console.log("Signing with global signEvent");
-            return window.signEvent(event, privateKey);
+            return window.signEvent(eventToSign, privateKey);
         } else if (window.NostrTools && typeof window.NostrTools.finalizeEvent === 'function') {
             console.log("Signing with NostrTools.finalizeEvent");
-            return window.NostrTools.finalizeEvent(event, hexToBytes(privateKey));
+            return window.NostrTools.finalizeEvent(eventToSign, hexToBytes(privateKey));
         } else if (window.NostrTools && typeof window.NostrTools.signEvent === 'function') {
             console.log("Signing with NostrTools.signEvent");
-            return window.NostrTools.signEvent(event, privateKey);
+            return window.NostrTools.signEvent(eventToSign, privateKey);
         } else if (window.nostrTools && typeof window.nostrTools.finalizeEvent === 'function') {
             console.log("Signing with nostrTools.finalizeEvent");
-            return window.nostrTools.finalizeEvent(event, hexToBytes(privateKey));
+            return window.nostrTools.finalizeEvent(eventToSign, hexToBytes(privateKey));
         } else if (window.nostrTools && typeof window.nostrTools.signEvent === 'function') {
             console.log("Signing with nostrTools.signEvent");
-            return window.nostrTools.signEvent(event, privateKey);
+            return window.nostrTools.signEvent(eventToSign, privateKey);
         } else {
             throw new Error("No method found to sign the event");
         }
@@ -129,9 +154,34 @@ window.NostrCrypto.signEvent = async function(event, privateKey) {
 // Sign an event with extension
 window.NostrCrypto.signEventWithExtension = async function(event) {
     try {
+        // Make a copy of the event to avoid modifying the original
+        const eventToSign = { ...event };
+
+        // Calculate event ID if needed
+        if (!eventToSign.id) {
+            console.log("Calculating event ID before signing with extension");
+
+            // Try different ways to calculate event ID based on available API
+            if (window.NostrTools && typeof window.NostrTools.getEventHash === 'function') {
+                console.log("Using NostrTools.getEventHash");
+                eventToSign.id = window.NostrTools.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else if (window.getEventHash) {
+                console.log("Using global getEventHash");
+                eventToSign.id = window.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else if (window.nostrTools && typeof window.nostrTools.getEventHash === 'function') {
+                console.log("Using nostrTools.getEventHash");
+                eventToSign.id = window.nostrTools.getEventHash(eventToSign);
+                console.log("Calculated event ID:", eventToSign.id);
+            } else {
+                console.warn("No method found to calculate event ID");
+            }
+        }
+
         if (window.nostr && typeof window.nostr.signEvent === 'function') {
             console.log("Signing with Nostr extension");
-            return await window.nostr.signEvent(event);
+            return await window.nostr.signEvent(eventToSign);
         } else {
             throw new Error("No Nostr extension found");
         }

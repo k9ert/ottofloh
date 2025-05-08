@@ -142,16 +142,36 @@ window.NostrConnection.subscribeToChannel = function(relayPool, relays, CHANNEL_
 window.NostrConnection.processAndPublishSignedEvent = async function(signedEvent, userPublicKey, relayPool, relays) {
     console.log("Processing signed event for publishing:", signedEvent);
 
-    // Check if we have a properly signed event
-    if (!signedEvent || !signedEvent.sig) {
-        console.error("Cannot publish unsigned event:", signedEvent);
-        alert("Fehler: Die Nachricht wurde nicht korrekt signiert und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+    // Check if we have a properly signed event with all required fields
+    if (!signedEvent || !signedEvent.sig || !signedEvent.id || !signedEvent.pubkey ||
+        !signedEvent.kind || !signedEvent.created_at || !signedEvent.content) {
+        console.error("Cannot publish invalid event:", signedEvent);
+        alert("Fehler: Die Nachricht ist ungültig und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
         return;
+    }
+
+    // Double-check that the event ID is correct
+    if (window.NostrTools && window.NostrTools.getEventHash) {
+        const calculatedId = window.NostrTools.getEventHash(signedEvent);
+        if (calculatedId !== signedEvent.id) {
+            console.error("Event ID mismatch:", {
+                providedId: signedEvent.id,
+                calculatedId: calculatedId
+            });
+
+            // Fix the ID
+            console.log("Fixing event ID before publishing");
+            signedEvent.id = calculatedId;
+        } else {
+            console.log("Event ID verified correctly");
+        }
     }
 
     // Publish to relays
     if (relayPool && typeof relayPool.publish === 'function') {
-        console.log("Publishing with relayPool.publish");
+        console.log("Publishing to relays:", relays);
+        console.log("Event:", signedEvent);
+
         try {
             // Add a small delay before publishing to avoid rate limiting
             setTimeout(() => {
@@ -186,27 +206,28 @@ window.NostrConnection.processAndPublishSignedEvent = async function(signedEvent
     // Change the ID to a local version to ensure it's displayed
     localEvent.id = 'local-sent-' + (signedEvent.id || Date.now() + '-' + Math.random().toString(36).substring(2, 15));
 
-    // Add handle name tags if we have profile info
+    // Make sure we have tags array
     if (!localEvent.tags) {
         localEvent.tags = [];
     }
 
-    if (window.profileCache && window.profileCache[userPublicKey]) {
-        const profile = window.profileCache[userPublicKey];
+    // We don't need to add any profile-related tags to the event
+    // This ensures consistent behavior for all users, regardless of whether they have NIP-05 or not
+    console.log("Not adding any profile tags to local event to ensure consistent behavior");
 
-        if (profile.nip05) {
-            localEvent.tags.push(['nip05', profile.nip05]);
+    // Just make sure we have the required tag for the channel
+    let hasChannelTag = false;
+    for (const tag of localEvent.tags) {
+        if (tag[0] === 't') {
+            hasChannelTag = true;
+            break;
         }
+    }
 
-        if (profile.name) {
-            localEvent.tags.push(['name', profile.name]);
-        }
-
-        if (profile.display_name) {
-            localEvent.tags.push(['display_name', profile.display_name]);
-        } else if (profile.displayName) {
-            localEvent.tags.push(['display_name', profile.displayName]);
-        }
+    // If no channel tag is found, add a default one
+    if (!hasChannelTag) {
+        console.log("No channel tag found, adding default channel tag to local event");
+        localEvent.tags.push(['t', 'ottobrunner-hofflohmarkt']);
     }
 
     // Log the local event for debugging
@@ -232,7 +253,7 @@ window.NostrConnection.sendMessage = async function(content, userPublicKey, user
         // Create event with basic tags
         const eventTags = [['t', CHANNEL_ID]];
 
-        // Add profile tags
+        // Create a properly formatted event object
         const event = {
             kind: 1, // Only send kind=1 events as requested
             created_at: Math.floor(Date.now() / 1000),
@@ -241,10 +262,17 @@ window.NostrConnection.sendMessage = async function(content, userPublicKey, user
             pubkey: userPublicKey // Add pubkey to the event
         };
 
-        // Add profile tags
+        // Add profile tags - this modifies the event object
         window.NostrProfile.addProfileTags(event, userPublicKey);
 
-        console.log("Created event template with handle name:", event);
+        console.log("Created event template:", event);
+
+        // Ensure we have all required fields for a valid Nostr event
+        if (!event.kind || !event.created_at || !event.pubkey || !event.content) {
+            console.error("Event is missing required fields:", event);
+            alert("Fehler: Die Nachricht enthält nicht alle erforderlichen Felder. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+            return;
+        }
 
         let signedEvent;
 
@@ -252,8 +280,27 @@ window.NostrConnection.sendMessage = async function(content, userPublicKey, user
         if (window.nostr && !userPrivateKey) {
             console.log("Signing with Nostr extension");
             try {
-                signedEvent = await window.NostrCrypto.signEventWithExtension(event);
+                // Try to use the newer NIP-07 method first
+                if (window.nostr.signEvent) {
+                    // Calculate event ID first if we have the function
+                    if (window.NostrTools && window.NostrTools.getEventHash) {
+                        event.id = window.NostrTools.getEventHash(event);
+                        console.log("Calculated event ID before extension signing:", event.id);
+                    }
+
+                    signedEvent = await window.nostr.signEvent(event);
+                } else {
+                    throw new Error("Nostr extension does not support signEvent");
+                }
+
                 console.log("Event signed with extension:", signedEvent);
+
+                // Verify that we have all required fields after signing
+                if (!signedEvent || !signedEvent.sig || !signedEvent.id) {
+                    console.error("Event is missing critical fields after extension signing:", signedEvent);
+                    alert("Fehler: Die Nachricht wurde nicht korrekt signiert. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                    return;
+                }
             } catch (signError) {
                 console.error("Error signing with extension:", signError);
                 alert("Fehler beim Signieren mit der Nostr-Erweiterung. Bitte versuchen Sie es erneut.");
@@ -262,24 +309,30 @@ window.NostrConnection.sendMessage = async function(content, userPublicKey, user
         } else {
             // Sign with private key
             try {
+                // Use our custom signing function that calculates the event ID
                 signedEvent = await window.NostrCrypto.signEvent(event, userPrivateKey);
-                console.log("Signed event:", signedEvent);
+                console.log("Signed event with private key:", signedEvent);
 
                 // Verify that the event has all required fields
-                if (!signedEvent || !signedEvent.sig) {
-                    console.error("Event is missing critical fields (sig):", signedEvent);
-                    alert("Fehler: Die Nachricht wurde nicht korrekt signiert und kann nicht gesendet werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+                if (!signedEvent || !signedEvent.sig || !signedEvent.id) {
+                    console.error("Event is missing critical fields after signing:", signedEvent);
+                    alert("Fehler: Die Nachricht wurde nicht korrekt signiert. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
                     return;
                 }
 
                 // Verify the signature if possible
-                const isValid = window.NostrCrypto.verifyEvent(signedEvent);
-                if (!isValid) {
-                    console.warn("Event signature verification failed");
+                if (window.NostrTools && window.NostrTools.verifyEvent) {
+                    const isValid = window.NostrTools.verifyEvent(signedEvent);
+                    if (!isValid) {
+                        console.warn("Event signature verification failed");
+                        alert("Warnung: Die Signatur der Nachricht konnte nicht verifiziert werden. Die Nachricht wird trotzdem gesendet.");
+                    } else {
+                        console.log("Event signature verified successfully");
+                    }
                 }
             } catch (signError) {
                 console.error("Error signing event:", signError);
-                alert("Fehler beim Signieren der Nachricht. Bitte versuchen Sie es erneut.");
+                alert("Fehler beim Signieren der Nachricht. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
                 return;
             }
         }
