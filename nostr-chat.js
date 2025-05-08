@@ -1,7 +1,7 @@
 // nostr-chat.js - Hauptdatei für den Nostr-Chat
 document.addEventListener('DOMContentLoaded', function() {
     // Import modules
-    const { bytesToHex, hexToBytes } = window.NostrUtils;
+    const { hexToBytes } = window.NostrUtils;
     const { generateKeyPair, getPublicKey } = window.NostrCrypto;
     const { initUI, showChatInterface, hideLoadingIndicator, addWelcomeMessage, resetIdentity } = window.NostrUI;
     const { sendMessage } = window.NostrConnection;
@@ -15,8 +15,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const CHANNEL_ID = 'ottobrunner-hofflohmarkt-2025';
 
     // State variables
-    let userPrivateKey = null;
-    let userPublicKey = null;
+    window.userPrivateKey = null;
+    window.userPublicKey = null;
     let relayPool = null;
     let isInitialLoad = true;
 
@@ -29,9 +29,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const sendButton = document.getElementById('chat-send-button');
     const generateKeyButton = document.getElementById('generate-key-button');
     const loginExtensionButton = document.getElementById('login-extension-button');
+    const loginNsecButton = document.getElementById('login-nsec-button');
+    const nsecInputDialog = document.getElementById('nsec-input-dialog');
+    const nsecInput = document.getElementById('nsec-input');
+    const nsecSubmitButton = document.getElementById('nsec-submit-button');
+    const nsecCancelButton = document.getElementById('nsec-cancel-button');
 
     // Initialize UI
     initUI();
+
+    // Debug: Check if DOM elements are found
+    console.log("DOM Elements found:", {
+        loginContainer: !!loginContainer,
+        chatInterface: !!chatInterface,
+        loginNsecButton: !!loginNsecButton,
+        nsecInputDialog: !!nsecInputDialog,
+        nsecInput: !!nsecInput,
+        nsecSubmitButton: !!nsecSubmitButton,
+        nsecCancelButton: !!nsecCancelButton
+    });
 
     // Check if we have a saved key in localStorage
     function checkForSavedKey() {
@@ -47,16 +63,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                userPrivateKey = savedKey;
+                window.userPrivateKey = savedKey;
 
                 // Try different ways to get public key based on available API
                 try {
-                    userPublicKey = getPublicKey(hexToBytes(savedKey));
-                    console.log("Loaded key pair:", { publicKey: userPublicKey });
+                    window.userPublicKey = getPublicKey(hexToBytes(savedKey));
+                    console.log("Loaded key pair:", { publicKey: window.userPublicKey });
 
                     // Validate the public key
-                    if (!/^[0-9a-f]{64}$/i.test(userPublicKey)) {
-                        console.error("Invalid public key format:", userPublicKey);
+                    if (!/^[0-9a-f]{64}$/i.test(window.userPublicKey)) {
+                        console.error("Invalid public key format:", window.userPublicKey);
                         throw new Error("Invalid public key format");
                     }
 
@@ -84,13 +100,13 @@ document.addEventListener('DOMContentLoaded', function() {
     generateKeyButton.addEventListener('click', () => {
         try {
             const { privateKey, secretKey } = generateKeyPair();
-            userPrivateKey = privateKey;
-            userPublicKey = getPublicKey(secretKey);
+            window.userPrivateKey = privateKey;
+            window.userPublicKey = getPublicKey(secretKey);
 
-            console.log("Generated key pair:", { privateKey: userPrivateKey, publicKey: userPublicKey });
+            console.log("Generated key pair:", { privateKey: window.userPrivateKey, publicKey: window.userPublicKey });
 
             // Save to localStorage
-            localStorage.setItem('nostr_private_key', userPrivateKey);
+            localStorage.setItem('nostr_private_key', window.userPrivateKey);
 
             showChatInterface();
             initNostrConnection();
@@ -105,14 +121,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.nostr) {
             try {
                 // Try to get the public key from the extension
-                userPublicKey = await window.nostr.getPublicKey();
+                window.userPublicKey = await window.nostr.getPublicKey();
 
                 // Check if we got a valid public key
-                if (!userPublicKey) {
+                if (!window.userPublicKey) {
                     throw new Error("No public key returned from extension");
                 }
 
-                console.log("Successfully connected to Nostr extension, public key:", userPublicKey);
+                console.log("Successfully connected to Nostr extension, public key:", window.userPublicKey);
                 showChatInterface();
                 initNostrConnection();
             } catch (error) {
@@ -141,6 +157,140 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Keine Nostr-Erweiterung gefunden. Bitte installieren Sie eine Nostr-Erweiterung (wie nos2x oder Alby) oder erstellen Sie einen neuen Schlüssel.');
         }
     });
+
+    // Setup nsec input dialog handlers
+    function setupNsecHandlers() {
+        console.log("Setting up nsec handlers");
+
+        // Get DOM elements again to ensure they exist
+        const loginNsecButton = document.getElementById('login-nsec-button');
+        const nsecInputDialog = document.getElementById('nsec-input-dialog');
+        const nsecInput = document.getElementById('nsec-input');
+        const nsecSubmitButton = document.getElementById('nsec-submit-button');
+        const nsecCancelButton = document.getElementById('nsec-cancel-button');
+
+        // Debug: Check if DOM elements are found now
+        console.log("NSEC DOM Elements found:", {
+            loginNsecButton: !!loginNsecButton,
+            nsecInputDialog: !!nsecInputDialog,
+            nsecInput: !!nsecInput,
+            nsecSubmitButton: !!nsecSubmitButton,
+            nsecCancelButton: !!nsecCancelButton
+        });
+
+        if (!loginNsecButton || !nsecInputDialog || !nsecInput || !nsecSubmitButton || !nsecCancelButton) {
+            console.error("Some nsec DOM elements not found, retrying in 500ms");
+            setTimeout(setupNsecHandlers, 500);
+            return;
+        }
+
+        // Show nsec input dialog
+        loginNsecButton.addEventListener('click', () => {
+            console.log("NSEC button clicked");
+            nsecInputDialog.style.display = 'block';
+            nsecInput.focus();
+        });
+
+        // Hide nsec input dialog
+        nsecCancelButton.addEventListener('click', () => {
+            nsecInputDialog.style.display = 'none';
+            nsecInput.value = '';
+        });
+
+        // Process nsec key input
+        nsecSubmitButton.addEventListener('click', () => {
+            processNsecInput();
+        });
+
+        // Allow Enter key to submit nsec
+        nsecInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                processNsecInput();
+            }
+        });
+
+        console.log("NSEC handlers setup complete");
+    }
+
+    // Call the setup function
+    setupNsecHandlers();
+
+    // Process the nsec key input
+    function processNsecInput() {
+        // Get DOM elements again to ensure they exist
+        const nsecInputDialog = document.getElementById('nsec-input-dialog');
+        const nsecInput = document.getElementById('nsec-input');
+
+        const nsecValue = nsecInput.value.trim();
+
+        if (!nsecValue) {
+            alert('Bitte geben Sie einen nsec-Schlüssel ein.');
+            return;
+        }
+
+        try {
+            // Handle both nsec and hex formats
+            let privateKeyHex;
+
+            if (nsecValue.startsWith('nsec1')) {
+                // Convert from bech32 to hex
+                try {
+                    // Use NostrTools bech32 conversion if available
+                    if (window.NostrTools && window.NostrTools.nip19) {
+                        const decoded = window.NostrTools.nip19.decode(nsecValue);
+                        console.log("Decoded nsec:", decoded);
+
+                        // Check the type of decoded.data
+                        if (typeof decoded.data === 'string') {
+                            privateKeyHex = decoded.data;
+                        } else if (decoded.data instanceof Uint8Array) {
+                            // Convert Uint8Array to hex string
+                            privateKeyHex = window.NostrUtils.bytesToHex(decoded.data);
+                        } else {
+                            // Try to handle other formats
+                            console.log("Unexpected data type:", typeof decoded.data);
+                            privateKeyHex = decoded.data.toString();
+                        }
+
+                        console.log("Converted privateKeyHex:", privateKeyHex);
+                    } else {
+                        throw new Error("Bech32 conversion not available");
+                    }
+                } catch (bech32Error) {
+                    console.error("Error decoding nsec:", bech32Error);
+                    alert('Ungültiger nsec-Schlüssel. Bitte überprüfen Sie das Format und versuchen Sie es erneut.');
+                    return;
+                }
+            } else if (/^[0-9a-f]{64}$/i.test(nsecValue)) {
+                // Already in hex format
+                privateKeyHex = nsecValue;
+            } else {
+                alert('Ungültiges Schlüsselformat. Bitte geben Sie einen gültigen nsec-Schlüssel ein.');
+                return;
+            }
+
+            // Derive public key from private key
+            window.userPrivateKey = privateKeyHex;
+            window.userPublicKey = getPublicKey(hexToBytes(privateKeyHex));
+
+            console.log("Loaded key from nsec input:", { publicKey: window.userPublicKey });
+
+            // Save to localStorage
+            localStorage.setItem('nostr_private_key', window.userPrivateKey);
+
+            // Hide the dialog and clear the input
+            nsecInputDialog.style.display = 'none';
+            nsecInput.value = '';
+
+            // Show chat interface and initialize connection
+            showChatInterface();
+            initNostrConnection();
+
+        } catch (error) {
+            console.error("Error processing nsec key:", error);
+            alert('Fehler beim Verarbeiten des nsec-Schlüssels. Bitte überprüfen Sie das Format und versuchen Sie es erneut.');
+        }
+    }
 
     // Initialize Nostr connection
     function initNostrConnection() {
@@ -183,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 welcomeMessageAdded = true;
 
                 // Add the welcome message
-                addWelcomeMessage(userPublicKey, CHANNEL_ID, false);
+                addWelcomeMessage(window.userPublicKey, CHANNEL_ID, false);
             };
 
             // Start the welcome message process

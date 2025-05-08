@@ -185,10 +185,22 @@
             <div id="nostr-login-container">
                 <div class="chat-login-container">
                     <p>Um am Chat teilzunehmen, benötigen Sie einen Nostr-Schlüssel. Sie können einen neuen Schlüssel
-                        erstellen oder eine bestehende Nostr-Erweiterung verwenden.</p>
+                        erstellen, eine bestehende Nostr-Erweiterung verwenden oder Ihren eigenen nsec-Schlüssel eingeben.</p>
                     <button id="generate-key-button" class="chat-login-button">Neuen Schlüssel erstellen</button>
-                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung
-                        anmelden</button>
+                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung anmelden</button>
+                    <button id="login-nsec-button" class="chat-login-button">Eigenen nsec-Schlüssel verwenden</button>
+
+                    <!-- Dialog für nsec-Schlüssel Eingabe (standardmäßig versteckt) -->
+                    <div id="nsec-input-dialog" style="display: none; margin-top: 15px;">
+                        <p>Bitte geben Sie Ihren nsec-Schlüssel ein:</p>
+                        <input type="password" id="nsec-input" class="chat-input" style="width: 100%; margin-bottom: 10px;"
+                               placeholder="nsec1..." autocomplete="off">
+                        <div style="display: flex; justify-content: space-between;">
+                            <button id="nsec-submit-button" class="chat-login-button">Anmelden</button>
+                            <button id="nsec-cancel-button" class="chat-login-button" style="background-color: #f44336;">Abbrechen</button>
+                        </div>
+                        <p><small>Hinweis: Ihr Schlüssel wird nur lokal in Ihrem Browser gespeichert und nicht an Server übertragen.</small></p>
+                    </div>
                 </div>
             </div>
 

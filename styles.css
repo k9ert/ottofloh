@@ -490,6 +490,24 @@ h2 {
     transform: translateY(-2px);
 }
 
+/* Styles für den nsec-Dialog */
+#nsec-input-dialog {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd;
+}
+
+#nsec-input {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+#nsec-cancel-button:hover {
+    background-color: #d32f2f !important;
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
     body {
