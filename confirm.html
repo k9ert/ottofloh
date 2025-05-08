@@ -11,23 +11,24 @@
     <div class="container">
         <h1>Anmeldung bestätigen</h1>
 
-        <div id="loading">
+        <div id="loading" style="display: block; text-align: center; margin: 2rem 0;">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Wird geladen...</span>
             </div>
             <p class="mt-2">Ihre Anmeldung wird bestätigt...</p>
         </div>
 
-        <div id="success-message" class="text-center">
+        <div id="success-message" class="text-center" style="display: none; margin: 2rem 0;">
             <div class="icon-large text-success">✓</div>
             <h2>Anmeldung erfolgreich bestätigt!</h2>
             <p class="lead">Vielen Dank für die Bestätigung Ihrer Anmeldung zum Ottobrunner Hofflohmarkt 2025.</p>
             <p>Ihre Teilnahme ist nun gesichert. Wir werden Sie rechtzeitig vor der Veranstaltung mit weiteren Informationen kontaktieren.</p>
+            <p>Die Eintragung in die Plan erfolgt allerdings noch manuell. Bitte haben Sie etwas Geduld.</p>
             <p>Bei Fragen können Sie sich jederzeit an uns wenden.</p>
             <a href="index.html" class="btn btn-primary mt-3">Zurück zur Startseite</a>
         </div>
 
-        <div id="error-message" class="text-center">
+        <div id="error-message" class="text-center" style="display: none; margin: 2rem 0;">
             <div class="icon-large text-danger">✗</div>
             <h2>Fehler bei der Bestätigung</h2>
             <p class="lead" id="error-details">Leider ist ein Fehler aufgetreten. Der Bestätigungslink ist möglicherweise ungültig oder abgelaufen.</p>

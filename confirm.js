@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Anmeldung bestätigen
+    console.log('Starte Bestätigungsprozess mit Token:', token);
     confirmRegistration(token);
 
     // Funktion zur Bestätigung der Anmeldung
@@ -37,8 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (updateResult.ok) {
                 // Erfolgsanzeige
-                loading.style.display = 'none';
-                successMessage.style.display = 'block';
+                showSuccess();
             } else {
                 throw new Error('Fehler beim Aktualisieren des Status');
             }
@@ -51,27 +51,36 @@ document.addEventListener('DOMContentLoaded', function() {
     // Sucht nach einem Eintrag mit dem angegebenen Token
     async function findRecordByToken(token) {
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}?filterByFormula={ConfirmationToken}="${token}"`;
+        console.log('Suche nach Eintrag mit Token:', token);
 
         try {
+            console.log('Sende Anfrage an Airtable API:', url);
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                mode: 'cors' // Explizit CORS-Modus aktivieren
             });
 
             if (!response.ok) {
-                throw new Error('Fehler beim Abrufen der Daten');
+                const errorText = await response.text().catch(() => 'Keine Fehlerdetails verfügbar');
+                console.error('API-Fehler:', response.status, errorText);
+                throw new Error(`Fehler beim Abrufen der Daten: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('Airtable-Antwort erhalten:', data);
 
             // Überprüfen, ob ein Eintrag gefunden wurde
             if (data.records && data.records.length > 0) {
+                console.log('Eintrag gefunden:', data.records[0].id);
                 return data.records[0];
             }
 
+            console.log('Kein Eintrag mit diesem Token gefunden');
             return null;
         } catch (error) {
             console.error('Fehler beim Suchen des Eintrags:', error);
@@ -82,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Aktualisiert den Status eines Eintrags auf "confirmed"
     async function updateRecordStatus(recordId) {
         const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${recordId}`;
+        console.log('Aktualisiere Status für Eintrag:', recordId);
 
         const data = {
             fields: {
@@ -90,14 +100,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
 
-        return fetch(url, {
-            method: 'PATCH',
-            headers: {
-                'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
+        console.log('Sende Update-Anfrage an Airtable:', data);
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(data),
+                mode: 'cors' // Explizit CORS-Modus aktivieren
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Keine Fehlerdetails verfügbar');
+                console.error('Update-Fehler:', response.status, errorText);
+            } else {
+                console.log('Status erfolgreich aktualisiert');
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Fehler beim Aktualisieren des Status:', error);
+            throw error;
+        }
     }
 
     // Formatiert ein Datum für Airtable
@@ -106,13 +134,41 @@ document.addEventListener('DOMContentLoaded', function() {
         return date.toISOString().split('T')[0];
     }
 
+    // Blendet alle Meldungen aus
+    function hideAllMessages() {
+        console.log('Blende alle Meldungen aus');
+        loading.style.display = 'none';
+        successMessage.style.display = 'none';
+        errorMessage.style.display = 'none';
+    }
+
+    // Zeigt eine Erfolgsmeldung an
+    function showSuccess() {
+        console.log('Zeige Erfolgsmeldung an');
+        // Alle Meldungen ausblenden
+        hideAllMessages();
+
+        // Nur die Erfolgsmeldung anzeigen
+        successMessage.style.display = 'block';
+
+        // Scroll zur Meldung
+        successMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // Zeigt eine Fehlermeldung an
     function showError(message) {
-        loading.style.display = 'none';
+        console.log('Zeige Fehlermeldung an:', message);
+        // Alle Meldungen ausblenden
+        hideAllMessages();
+
+        // Nur die Fehlermeldung anzeigen
         errorMessage.style.display = 'block';
 
         if (message) {
             errorDetails.textContent = message;
         }
+
+        // Scroll zur Meldung
+        errorMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 });
