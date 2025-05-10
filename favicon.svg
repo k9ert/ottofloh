@@ -1,0 +1,20 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Einkaufstasche in Gelb -->
+  <rect x="14" y="20" width="36" height="36" rx="6" fill="#FFD93B" stroke="#222" stroke-width="2"/>
+  <!-- Deutlicher Henkel -->
+  <path d="M20 20 Q32 6 44 20" stroke="#222" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <!-- Text "OTTO" auf der Tasche, mittig oben -->
+  <text x="32" y="34" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="12" fill="#222222" pointer-events="none">
+    OTTO
+  </text>
+  <!-- Großer Floh auf der Tasche, weiter unten -->
+  <ellipse cx="32" cy="46" rx="8" ry="5" fill="#3b2c1a" stroke="#2a1f14" stroke-width="1"/>
+  <!-- Beinchen -->
+  <line x1="24" y1="46" x2="20" y2="42" stroke="#2a1f14" stroke-width="1.5"/>
+  <line x1="40" y1="46" x2="44" y2="42" stroke="#2a1f14" stroke-width="1.5"/>
+  <line x1="26" y1="51" x2="22" y2="55" stroke="#2a1f14" stroke-width="1.5"/>
+  <line x1="38" y1="51" x2="42" y2="55" stroke="#2a1f14" stroke-width="1.5"/>
+  <!-- Fühler -->
+  <line x1="27" y1="41" x2="25" y2="37" stroke="#2a1f14" stroke-width="1.5"/>
+  <line x1="37" y1="41" x2="39" y2="37" stroke="#2a1f14" stroke-width="1.5"/>
+</svg>
