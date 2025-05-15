@@ -248,9 +248,6 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
     // Add a welcome message to the chat locally without sending it to relays
     console.log("Initial load complete, adding welcome message locally");
 
-    // Create tags for the welcome message - only include the channel tag
-    const welcomeTags = [['t', CHANNEL_ID]];
-
     // We don't need to add any profile-related tags to the event
     // This ensures consistent behavior for all users, regardless of whether they have NIP-05 or not
     console.log("Not adding any profile tags to welcome message to ensure consistent behavior");
@@ -261,14 +258,23 @@ window.NostrUI.addWelcomeMessage = function(userPublicKey, CHANNEL_ID, isInitial
         window.NostrProfile.requestProfileInfo(userPublicKey, window.relayPool, window.relays);
     }
 
+    // Get the channel ID - use the stored one if available, otherwise use the CHANNEL_ID
+    const channelId = window.NostrConnection.channelInfo.id || CHANNEL_ID;
+
+    // Create event with tags according to NIP-28
+    const channelTags = [
+        ['e', channelId, '', 'root'], // Reference to the channel with 'root' marker
+        ['t', CHANNEL_ID] // Keep the 't' tag for backward compatibility
+    ];
+
     // Create a local event for display only with a timestamp that ensures it appears at the end
     const welcomeEvent = {
-        kind: 1,
+        kind: 42, // Channel message (NIP-28)
         created_at: Math.floor(Date.now() / 1000) + 1, // Add 1 second to ensure it's the newest
         pubkey: userPublicKey,
         content: '... betritt den Chat.',
         id: 'local-welcome-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15),
-        tags: welcomeTags
+        tags: channelTags
     };
 
     // Display the welcome message locally
