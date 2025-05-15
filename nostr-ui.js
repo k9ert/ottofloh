@@ -6,6 +6,58 @@ window.NostrUI = window.NostrUI || {};
 // Set of processed event IDs to avoid duplicates
 window.NostrUI.processedEvents = new Set();
 
+// Check if a string is an image URL
+window.NostrUI.isImageUrl = function(str) {
+    if (!str) return false;
+
+    // Trim the string
+    str = str.trim();
+
+    try {
+        // Try to create a URL object
+        const url = new URL(str);
+
+        // Check if the protocol is http or https
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return false;
+        }
+
+        // Check if the URL ends with a common image extension
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+        const path = url.pathname.toLowerCase();
+
+        // Check for direct image extensions
+        for (const ext of imageExtensions) {
+            if (path.endsWith(ext)) {
+                return true;
+            }
+        }
+
+        // Check for common image hosting patterns
+        if (
+            // Giphy
+            (url.hostname.includes('giphy.com') && path.includes('.gif')) ||
+            // Imgur
+            url.hostname.includes('imgur.com') ||
+            // Tenor
+            url.hostname.includes('tenor.com') ||
+            // Discord CDN
+            url.hostname.includes('cdn.discordapp.com') ||
+            // Twitter/X image
+            (url.hostname.includes('pbs.twimg.com') && path.includes('/media/')) ||
+            // Instagram image
+            (url.hostname.includes('instagram.com') && path.includes('/p/'))
+        ) {
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        console.warn("Error parsing URL:", error);
+        return false;
+    }
+};
+
 // DOM Elements
 let chatContainer;
 let loadingIndicator;
@@ -183,7 +235,71 @@ window.NostrUI.createMessageElement = function(event, userPublicKey, relayPool, 
     // Create message content
     const content = document.createElement('div');
     content.className = 'chat-content';
-    content.textContent = event.content;
+
+    // Check if the content is an image URL
+    if (window.NostrUI.isImageUrl(event.content)) {
+        console.log("Detected image URL:", event.content);
+
+        // Create image container
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'chat-image-container';
+
+        // Create image element
+        const image = document.createElement('img');
+        image.className = 'chat-image';
+        image.src = event.content;
+        image.alt = 'Shared image';
+
+        // Add loading indicator
+        image.style.opacity = '0.6';
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'image-loading';
+        loadingIndicator.innerHTML = '<div class="loading-circle"></div>';
+        imageContainer.appendChild(loadingIndicator);
+
+        // Handle image load event
+        image.onload = function() {
+            image.style.opacity = '1';
+            if (loadingIndicator.parentNode) {
+                loadingIndicator.parentNode.removeChild(loadingIndicator);
+            }
+        };
+
+        // Handle image error event
+        image.onerror = function() {
+            console.warn("Failed to load image:", event.content);
+            imageContainer.removeChild(image);
+            if (loadingIndicator.parentNode) {
+                loadingIndicator.parentNode.removeChild(loadingIndicator);
+            }
+
+            // Show the URL as text instead
+            const fallbackText = document.createElement('a');
+            fallbackText.href = event.content;
+            fallbackText.target = '_blank';
+            fallbackText.rel = 'noopener noreferrer';
+            fallbackText.textContent = event.content;
+            imageContainer.appendChild(fallbackText);
+        };
+
+        // Add image to container
+        imageContainer.appendChild(image);
+
+        // Add image container to content
+        content.appendChild(imageContainer);
+
+        // Also add the URL as text below the image for reference
+        const urlText = document.createElement('a');
+        urlText.className = 'chat-image-url';
+        urlText.href = event.content;
+        urlText.target = '_blank';
+        urlText.rel = 'noopener noreferrer';
+        urlText.textContent = event.content;
+        content.appendChild(urlText);
+    } else {
+        // Regular text content
+        content.textContent = event.content;
+    }
 
     // Add header and content to content container
     contentContainer.appendChild(header);
