@@ -317,6 +317,74 @@ h2 {
     border-bottom: 1px solid var(--accent-color);
 }
 
+/* Donation Section Styles */
+.donation-section {
+    background: linear-gradient(to bottom, #ffffff, #f0fff0);
+    border-left: 5px solid #27ae60;
+    text-align: left;
+}
+
+.donation-section h3 {
+    color: #27ae60;
+    margin-top: 0;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    text-align: center;
+    border-bottom: 2px solid #27ae60;
+    padding-bottom: 15px;
+}
+
+.donation-info {
+    text-align: left;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.donation-info p {
+    margin-bottom: 12px;
+    line-height: 1.6;
+    font-size: 1.05em;
+}
+
+.donation-info strong {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Bitcoin Donation Styles */
+.bitcoin-donation {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px dashed #ddd;
+}
+
+.bitcoin-donation h4 {
+    color: #f7931a; /* Bitcoin orange */
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.bitcoin-donation h4::before {
+    content: "₿";
+    margin-right: 10px;
+    font-size: 1.2em;
+}
+
+.bitcoin-donation p {
+    margin-bottom: 15px;
+}
+
+#blink-pay-button-container {
+    margin: 20px 0;
+    display: flex;
+    justify-content: center;
+}
+
+/* Alte Styles für Abwärtskompatibilität */
 .crp-donation {
     margin-top: 40px;
     padding: 25px;
@@ -324,20 +392,6 @@ h2 {
     border-radius: 10px;
     border-left: 3px solid var(--accent-color);
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-}
-
-.donation-info {
-    text-align: left;
-}
-
-.donation-info p {
-    margin-bottom: 12px;
-    line-height: 1.6;
-}
-
-.donation-info strong {
-    color: var(--primary-color);
-    font-weight: 600;
 }
 
 /* Responsive styles for CRP section */

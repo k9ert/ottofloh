@@ -1,27 +1,6 @@
 // nostr-chat.js - Hauptdatei für den Nostr-Chat
 document.addEventListener('DOMContentLoaded', function() {
-    // Import modules
-    const { hexToBytes } = window.NostrUtils;
-    const { generateKeyPair, getPublicKey } = window.NostrCrypto;
-    const { initUI, showChatInterface, hideLoadingIndicator, addWelcomeMessage, resetIdentity } = window.NostrUI;
-    const { sendMessage } = window.NostrConnection;
-
-    // Relays to connect to - using multiple relays to increase the chances of finding profile information
-    const relays = [
-        'wss://relay.damus.io',
-        'wss://relay.nostr.band',
-        'wss://nos.lol',
-        'wss://relay.snort.social'
-    ];
-
-    // Chat channel identifier (using a specific tag for this event)
-    const CHANNEL_ID = 'ottobrunner-hofflohmarkt-2025';
-
     // State variables
-    window.userPrivateKey = null;
-    window.userPublicKey = null;
-    window.relayPool = null;
-    window.relays = relays; // Make relays globally available
     let isInitialLoad = true;
 
     // DOM Elements
@@ -40,7 +19,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const nsecCancelButton = document.getElementById('nsec-cancel-button');
 
     // Initialize UI
-    initUI();
+    if (typeof initUI === 'function') {
+        initUI();
+    } else if (window.initUI && typeof window.initUI === 'function') {
+        window.initUI();
+    } else if (window.NostrUI && typeof window.NostrUI.initUI === 'function') {
+        window.NostrUI.initUI();
+    } else {
+        console.error("initUI function not found");
+    }
 
     // Debug: Check if DOM elements are found
     console.log("DOM Elements found:", {
@@ -56,44 +43,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if we have a saved key in localStorage
     function checkForSavedKey() {
         try {
-            const savedKey = localStorage.getItem('nostr_private_key');
-            if (savedKey) {
-                console.log("Found saved key in localStorage");
+            const success = window.NostrCore.checkForSavedKey(() => {
+                window.NostrUI.showChatInterface();
 
-                // Validate the key format
-                if (!/^[0-9a-f]{64}$/i.test(savedKey)) {
-                    console.error("Invalid key format in localStorage");
-                    localStorage.removeItem('nostr_private_key');
-                    return;
-                }
+                // Initialize connection with a slight delay to ensure libraries are fully loaded
+                setTimeout(() => {
+                    initNostrConnection();
+                }, 500);
+            });
 
-                window.userPrivateKey = savedKey;
-
-                // Try different ways to get public key based on available API
-                try {
-                    window.userPublicKey = getPublicKey(hexToBytes(savedKey));
-                    console.log("Loaded key pair:", { publicKey: window.userPublicKey });
-
-                    // Validate the public key
-                    if (!/^[0-9a-f]{64}$/i.test(window.userPublicKey)) {
-                        console.error("Invalid public key format:", window.userPublicKey);
-                        throw new Error("Invalid public key format");
-                    }
-
-                    // We'll get the handle from profile events later
-                    console.log("User handle will be set from profile events");
-
-                    showChatInterface();
-
-                    // Initialize connection with a slight delay to ensure libraries are fully loaded
-                    setTimeout(() => {
-                        initNostrConnection();
-                    }, 500);
-                } catch (keyError) {
-                    console.error("Error deriving public key:", keyError);
-                    alert("Fehler beim Laden des gespeicherten Schlüssels. Ein neuer Schlüssel wird benötigt.");
-                    localStorage.removeItem('nostr_private_key');
-                }
+            if (!success) {
+                console.log("No valid saved key found");
             }
         } catch (error) {
             console.error("Error checking for saved key:", error);
@@ -103,17 +63,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Generate a new key pair
     generateKeyButton.addEventListener('click', () => {
         try {
-            const { privateKey, secretKey } = generateKeyPair();
-            window.userPrivateKey = privateKey;
-            window.userPublicKey = getPublicKey(secretKey);
+            const success = window.NostrCore.generateKeyPair(() => {
+                window.NostrUI.showChatInterface();
+                initNostrConnection();
+            });
 
-            console.log("Generated key pair:", { privateKey: window.userPrivateKey, publicKey: window.userPublicKey });
-
-            // Save to localStorage
-            localStorage.setItem('nostr_private_key', window.userPrivateKey);
-
-            showChatInterface();
-            initNostrConnection();
+            if (!success) {
+                console.error("Failed to generate key pair");
+                alert("Fehler beim Erstellen eines neuen Schlüssels. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
+            }
         } catch (error) {
             console.error("Error generating key:", error);
             alert("Fehler beim Erstellen eines neuen Schlüssels. Bitte laden Sie die Seite neu und versuchen Sie es erneut.");
@@ -122,43 +80,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Login with extension (NIP-07)
     loginExtensionButton.addEventListener('click', async () => {
-        if (window.nostr) {
-            try {
-                // Try to get the public key from the extension
-                window.userPublicKey = await window.nostr.getPublicKey();
-
-                // Check if we got a valid public key
-                if (!window.userPublicKey) {
-                    throw new Error("No public key returned from extension");
-                }
-
-                console.log("Successfully connected to Nostr extension, public key:", window.userPublicKey);
-                showChatInterface();
+        try {
+            const success = await window.NostrCore.connectWithExtension(() => {
+                window.NostrUI.showChatInterface();
                 initNostrConnection();
-            } catch (error) {
-                console.error('Error connecting to Nostr extension:', error);
+            });
 
-                // Check for specific error messages
-                const errorMessage = error?.message || String(error);
-
-                if (errorMessage.includes("no private key found") ||
-                    errorMessage.includes("No key") ||
-                    errorMessage.includes("not found")) {
-                    // This is a common error when the extension is installed but no key is configured
-                    alert('Die Nostr-Erweiterung ist installiert, aber es wurde kein Schlüssel gefunden. ' +
-                          'Bitte konfigurieren Sie zuerst einen Schlüssel in Ihrer Erweiterung oder ' +
-                          'erstellen Sie einen neuen Schlüssel für diesen Chat.');
-                } else if (errorMessage.includes("user rejected")) {
-                    // User rejected the request
-                    alert('Sie haben die Verbindung abgelehnt. Bitte erlauben Sie den Zugriff, ' +
-                          'wenn Sie die Erweiterung verwenden möchten, oder erstellen Sie einen neuen Schlüssel.');
-                } else {
-                    // Generic error
-                    alert('Fehler beim Verbinden mit der Nostr-Erweiterung. Bitte versuchen Sie es erneut oder erstellen Sie einen neuen Schlüssel.');
-                }
+            if (!success) {
+                console.log("Failed to connect with extension");
             }
-        } else {
-            alert('Keine Nostr-Erweiterung gefunden. Bitte installieren Sie eine Nostr-Erweiterung (wie nos2x oder Alby) oder erstellen Sie einen neuen Schlüssel.');
+        } catch (error) {
+            console.error("Error connecting with extension:", error);
         }
     });
 
@@ -227,69 +159,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const nsecValue = nsecInput.value.trim();
 
-        if (!nsecValue) {
-            alert('Bitte geben Sie einen nsec-Schlüssel ein.');
-            return;
-        }
-
         try {
-            // Handle both nsec and hex formats
-            let privateKeyHex;
+            const success = window.NostrCore.processNsecKey(nsecValue, () => {
+                // Hide the dialog and clear the input
+                nsecInputDialog.style.display = 'none';
+                nsecInput.value = '';
 
-            if (nsecValue.startsWith('nsec1')) {
-                // Convert from bech32 to hex
-                try {
-                    // Use NostrTools bech32 conversion if available
-                    if (window.NostrTools && window.NostrTools.nip19) {
-                        const decoded = window.NostrTools.nip19.decode(nsecValue);
-                        console.log("Decoded nsec:", decoded);
+                // Show chat interface and initialize connection
+                window.NostrUI.showChatInterface();
+                initNostrConnection();
+            });
 
-                        // Check the type of decoded.data
-                        if (typeof decoded.data === 'string') {
-                            privateKeyHex = decoded.data;
-                        } else if (decoded.data instanceof Uint8Array) {
-                            // Convert Uint8Array to hex string
-                            privateKeyHex = window.NostrUtils.bytesToHex(decoded.data);
-                        } else {
-                            // Try to handle other formats
-                            console.log("Unexpected data type:", typeof decoded.data);
-                            privateKeyHex = decoded.data.toString();
-                        }
-
-                        console.log("Converted privateKeyHex:", privateKeyHex);
-                    } else {
-                        throw new Error("Bech32 conversion not available");
-                    }
-                } catch (bech32Error) {
-                    console.error("Error decoding nsec:", bech32Error);
-                    alert('Ungültiger nsec-Schlüssel. Bitte überprüfen Sie das Format und versuchen Sie es erneut.');
-                    return;
-                }
-            } else if (/^[0-9a-f]{64}$/i.test(nsecValue)) {
-                // Already in hex format
-                privateKeyHex = nsecValue;
-            } else {
-                alert('Ungültiges Schlüsselformat. Bitte geben Sie einen gültigen nsec-Schlüssel ein.');
-                return;
+            if (!success) {
+                console.log("Failed to process nsec key");
             }
-
-            // Derive public key from private key
-            window.userPrivateKey = privateKeyHex;
-            window.userPublicKey = getPublicKey(hexToBytes(privateKeyHex));
-
-            console.log("Loaded key from nsec input:", { publicKey: window.userPublicKey });
-
-            // Save to localStorage
-            localStorage.setItem('nostr_private_key', window.userPrivateKey);
-
-            // Hide the dialog and clear the input
-            nsecInputDialog.style.display = 'none';
-            nsecInput.value = '';
-
-            // Show chat interface and initialize connection
-            showChatInterface();
-            initNostrConnection();
-
         } catch (error) {
             console.error("Error processing nsec key:", error);
             alert('Fehler beim Verarbeiten des nsec-Schlüssels. Bitte überprüfen Sie das Format und versuchen Sie es erneut.');
@@ -302,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Initializing Nostr connection with SimplePool");
 
             // Initialize relay pool
-            window.relayPool = window.NostrConnection.initRelayPool();
+            window.relayPool = window.NostrRelay.initRelayPool();
             console.log("Relay pool initialized:", window.relayPool);
 
             // Set a maximum loading time
@@ -310,12 +193,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (isInitialLoad) {
                     console.log("Maximum loading time reached, hiding loading indicator");
                     isInitialLoad = false;
-                    hideLoadingIndicator();
+                    window.NostrUI.hideLoadingIndicator();
                 }
             }, 5000); // 5 seconds maximum loading time
 
             // Subscribe to channel messages
-            window.NostrConnection.subscribeToChannel(window.relayPool, window.relays, CHANNEL_ID, window.userPublicKey, isInitialLoad);
+            window.NostrRelay.subscribeToChannel(
+                window.relayPool,
+                window.relays,
+                window.NostrCore.CHANNEL_ID,
+                window.userPublicKey,
+                isInitialLoad
+            );
 
             // Add a welcome message after the initial load is complete
             let welcomeMessageAdded = false;
@@ -338,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 welcomeMessageAdded = true;
 
                 // Add the welcome message
-                addWelcomeMessage(window.userPublicKey, CHANNEL_ID, false);
+                window.NostrUI.addWelcomeMessage(window.userPublicKey, window.NostrCore.CHANNEL_ID, false);
             };
 
             // Start the welcome message process
@@ -352,13 +241,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Send button click handler
     sendButton.addEventListener('click', () => {
-        sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, window.relayPool, window.relays);
+        window.NostrEvents.sendMessage(
+            chatInput.value,
+            window.userPublicKey,
+            window.userPrivateKey,
+            window.NostrCore.CHANNEL_ID,
+            window.relayPool,
+            window.relays
+        );
     });
 
     // Enter key to send
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            sendMessage(chatInput.value, window.userPublicKey, window.userPrivateKey, CHANNEL_ID, window.relayPool, window.relays);
+            window.NostrEvents.sendMessage(
+                chatInput.value,
+                window.userPublicKey,
+                window.userPrivateKey,
+                window.NostrCore.CHANNEL_ID,
+                window.relayPool,
+                window.relays
+            );
         }
     });
 
@@ -383,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
         resetTrigger.addEventListener('click', function() {
             // Ask for confirmation
             if (confirm('Möchten Sie Ihre Nostr-Identität wirklich zurücksetzen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-                resetIdentity();
+                window.NostrUI.resetIdentity();
             }
         });
     }

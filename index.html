@@ -41,19 +41,25 @@
         window.NostrUtils = {};
         window.NostrCrypto = {};
         window.NostrProfile = {};
-        window.NostrUI = {};
-        window.NostrConnection = {};
         window.profileCache = {};
     </script>
     <!-- Chart.js für Diagramme -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Blink Pay Button script für Bitcoin-Zahlungen -->
+    <script src="https://widget.twentyone.ist/js/blink-pay-button.js"></script>
+    <script src="bitcoin-payment.js"></script>
+
     <link rel="stylesheet" href="nostr-chat.css">
+    <!-- Nostr-Module (Reihenfolge ist wichtig) -->
     <script src="nostr-utils.js"></script>
     <script src="nostr-crypto.js"></script>
+    <script src="nostr-core.js"></script>
     <script src="nostr-profile.js"></script>
-    <script src="nostr-ui.js"></script>
-    <script src="nostr-connection.js"></script>
+    <script src="nostr-ui-core.js"></script>
+    <script src="nostr-ui-messages.js"></script>
+    <script src="nostr-relay.js"></script>
+    <script src="nostr-events.js"></script>
     <script src="nostr-chat.js"></script>
 </head>
 
@@ -131,19 +137,28 @@
                 </div>
             </div>
 
-            <div class="crp-donation">
-                <h4>Spenden an das CRP</h4>
-                <div class="donation-info">
-                    <p><strong>IBAN:</strong> DE27 7015 0000 1000 0596 76</p>
-                    <p><strong>Kontoinhaber:</strong> Freundeskreis des CRP Bangladesch e.V.</p>
-                    <p>Der deutsche Verein ist als gemeinnützig anerkannt.</p>
-                    <p>Ab Spenden in Höhe von 200 Euro kann eine Spendenquittung ausgestellt werden, die Sie von der
-                        Steuer absetzen können.</p>
-                    <p>Für eine Spendenquittung senden Sie bitte eine E-Mail mit dem Betreff "Spendenbescheinigung",
-                        Ihrem Namen, Ihrer Adresse und der Höhe der Spende an:
-                        <a href="mailto:ottofloh964@gmail.com?subject=Spendenbescheinigung"
-                            class="crp-link">ottofloh964@gmail.com</a>
-                    </p>
+            <!-- Spenden-Sektion wurde in eine eigene Kachel verschoben -->
+        </div>
+
+        <div class="section donation-section">
+            <h3>Spenden an das CRP</h3>
+            <div class="donation-info">
+                <p><strong>IBAN:</strong> DE27 7015 0000 1000 0596 76</p>
+                <p><strong>Kontoinhaber:</strong> Freundeskreis des CRP Bangladesch e.V.</p>
+                <p>Der deutsche Verein ist als gemeinnützig anerkannt.</p>
+                <p>Ab Spenden in Höhe von 200 Euro kann eine Spendenquittung ausgestellt werden, die Sie von der
+                    Steuer absetzen können.</p>
+                <p>Für eine Spendenquittung senden Sie bitte eine E-Mail mit dem Betreff "Spendenbescheinigung",
+                    Ihrem Namen, Ihrer Adresse und der Höhe der Spende an:
+                    <a href="mailto:ottofloh964@gmail.com?subject=Spendenbescheinigung"
+                        class="crp-link">ottofloh964@gmail.com</a>
+                </p>
+
+                <div class="bitcoin-donation">
+                    <h4>Mit Bitcoin spenden</h4>
+                    <p>Sie können auch schnell und einfach mit Bitcoin spenden:</p>
+                    <!-- Blink Pay Button widget -->
+                    <div id="blink-pay-button-container"></div>
                 </div>
             </div>
         </div>

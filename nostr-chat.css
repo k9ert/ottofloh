@@ -13,6 +13,14 @@
     height: 100%;
 }
 
+/* Message tile */
+.message-tile {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
 /* Chat messages container */
 #chat-container {
     flex: 1;
@@ -50,10 +58,13 @@
 
 /* Chat message */
 .chat-message {
-    padding: 8px;
+    padding: 12px;
     border-radius: 8px;
     max-width: 80%;
     word-wrap: break-word;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Message container with avatar and content */
@@ -61,15 +72,18 @@
     display: flex;
     gap: 10px;
     align-items: flex-start;
+    width: 100%;
 }
 
 /* Avatar container */
 .avatar-container {
     flex-shrink: 0;
+    width: 40px;
+    height: 40px;
 }
 
 /* Avatar */
-.avatar {
+.avatar, .user-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -83,10 +97,17 @@
 }
 
 /* Avatar image */
-.avatar-img {
+.avatar-img, .user-avatar {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Content container */
+.content-container {
+    flex: 1;
+    min-width: 0; /* Verhindert Überlauf bei langen Wörtern */
 }
 
 /* Avatar colors */
@@ -112,16 +133,32 @@
 /* Self message (right-aligned) */
 .chat-message.self {
     align-self: flex-end;
-    background-color: #dcf8c6;
+    background-color: #2c7873; /* Dunkleres Grün für besseren Kontrast */
     margin-left: auto;
+    color: white; /* Weißer Text für besseren Kontrast */
 }
 
 .chat-message.self .message-container {
     flex-direction: row-reverse;
 }
 
-.chat-message.self .chat-header {
+.chat-message.self .message-header {
     flex-direction: row-reverse;
+}
+
+/* Anpassen der Farben für Links in eigenen Nachrichten */
+.chat-message.self a {
+    color: #a8e6cf; /* Hellere Farbe für Links */
+}
+
+/* Anpassen der Farben für Benutzernamen in eigenen Nachrichten */
+.chat-message.self .username {
+    color: #dce8e0; /* Hellere Farbe für Benutzernamen */
+}
+
+/* Anpassen der Farben für Zeitstempel in eigenen Nachrichten */
+.chat-message.self .timestamp {
+    color: #dce8e0; /* Hellere Farbe für Zeitstempel */
 }
 
 /* Others message (left-aligned) */
@@ -132,27 +169,103 @@
 }
 
 /* Chat header with username and timestamp */
-.chat-header {
+.chat-header, .message-header {
     display: flex;
     justify-content: space-between;
-    font-size: 0.8em;
-    margin-bottom: 4px;
+    align-items: center;
+    font-size: 0.9em;
+    margin-bottom: 8px;
 }
 
 /* Username */
-.chat-username {
+.chat-username, .username {
     font-weight: bold;
     color: #3498db;
 }
 
 /* Timestamp */
-.chat-timestamp {
+.chat-timestamp, .timestamp {
     color: #999;
+    font-size: 0.8em;
 }
 
 /* Chat content */
-.chat-content {
-    line-height: 1.4;
+.chat-content, .message-content, .message-text {
+    line-height: 1.5;
+}
+
+/* Message text */
+.message-text {
+    margin-top: 5px;
+}
+
+/* Message reactions */
+.message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+/* Reaction */
+.reaction {
+    display: inline-flex;
+    align-items: center;
+    background-color: #f0f0f0;
+    border-radius: 12px;
+    padding: 3px 8px;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+/* Reaction count */
+.reaction-count {
+    margin-left: 4px;
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Reaction button */
+.reaction-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2em;
+    padding: 2px 5px;
+    margin-top: 5px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.reaction-button:hover {
+    opacity: 1;
+}
+
+/* Emoji picker */
+.emoji-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+/* Emoji button */
+.emoji-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em;
+    padding: 5px;
+    transition: transform 0.1s;
+}
+
+.emoji-button:hover {
+    transform: scale(1.2);
 }
 
 /* Chat image container */
@@ -166,12 +279,13 @@
 }
 
 /* Chat image */
-.chat-image {
+.chat-image, .message-image {
     max-width: 100%;
     max-height: 300px;
     display: block;
     border-radius: 8px;
     transition: opacity 0.3s ease;
+    margin-top: 10px;
 }
 
 /* Image loading indicator */
