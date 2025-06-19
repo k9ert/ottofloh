@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Airtable API Konfiguration
-    const AIRTABLE_API_KEY = 'paty2y0DYoHVlsuGS.328721587bb2b92322515563b681a3a30b486254e99f177f765e421d0c06bbc5'; // Ersetzen Sie dies mit Ihrem Airtable API-Schlüssel
+    const AIRTABLE_API_KEY = ''; // Ersetzen Sie dies mit Ihrem Airtable API-Schlüssel
     const AIRTABLE_BASE_ID = 'appbtLFYW5FJqeDj2'; // Ersetzen Sie dies mit Ihrer Airtable Base ID
     const AIRTABLE_TABLE_NAME = 'Registrations'; // Der Name Ihrer Tabelle in Airtable
 
