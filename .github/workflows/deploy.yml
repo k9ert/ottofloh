@@ -30,7 +30,7 @@ jobs:
       - name: Download and check KMZ file
         id: kmz-check
         run: |
-          KMZ_URL="https://www.google.com/maps/d/u/0/kml?mid=1MiczwI1dFKnqSY3a-O5kofK6KjegNe8&forcekml=1"
+          KMZ_URL="https://www.google.com/maps/d/u/0/kml?mid=1PSpm0UQdwph3UkQLM-Xzd2mVhQetLUE&forcekml=1"
           mkdir -p build/kmz_content
           
           # Download current KMZ
@@ -66,7 +66,7 @@ jobs:
         run: |
           python src/main.py
           mkdir -p assets
-          cp "build/Ottobrunner Hofflohmarkt 2025.pdf" assets/
+          cp "build/Ottobrunner Hofflohmarkt 2026.pdf" assets/
           echo "$NEW_HASH" > kmz.hash
           
       - name: Deploy to GitHub Pages
