@@ -1,0 +1,79 @@
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('garage-sale-form');
+    const errorMessage = document.getElementById('error-message');
+    const loading = document.getElementById('loading');
+    const registrationForm = document.getElementById('registration-form');
+    const successMessage = document.getElementById('success-message');
+
+    if (!form || !errorMessage || !loading || !registrationForm || !successMessage) {
+        console.error('Required DOM elements not found');
+        return;
+    }
+
+    // Worker API endpoint (no API key in frontend!)
+    const API_URL = 'https://ottofloh-api.<YOUR_CF_SUBDOMAIN>.workers.dev';
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        loading.style.display = 'block';
+        errorMessage.style.display = 'none';
+
+        try {
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                notes: (document.getElementById('notes').value || '').trim(),
+            };
+
+            const response = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.ok) {
+                registrationForm.style.display = 'none';
+                successMessage.style.display = 'block';
+                form.reset();
+            } else {
+                throw new Error(result.error || 'Unbekannter Fehler');
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            errorMessage.textContent = error.message || 'Es ist ein Fehler aufgetreten. Bitte versuchen Sie es später erneut.';
+            errorMessage.style.display = 'block';
+        } finally {
+            loading.style.display = 'none';
+        }
+    });
+
+    function validateForm() {
+        const name = document.getElementById('name').value.trim();
+        const address = document.getElementById('address').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const privacy = document.getElementById('privacy').checked;
+
+        let errors = [];
+        if (!name) errors.push('Bitte geben Sie Ihren Namen ein.');
+        if (!address) errors.push('Bitte geben Sie Ihre Adresse ein.');
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Bitte geben Sie eine gültige E-Mail-Adresse ein.');
+        if (!phone) errors.push('Bitte geben Sie Ihre Telefonnummer ein.');
+        if (!privacy) errors.push('Bitte stimmen Sie der Datenschutzerklärung zu.');
+
+        if (errors.length > 0) {
+            errorMessage.textContent = errors.join(' ');
+            errorMessage.style.display = 'block';
+            return false;
+        }
+        errorMessage.style.display = 'none';
+        return true;
+    }
+});

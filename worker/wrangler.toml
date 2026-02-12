@@ -1,0 +1,8 @@
+name = "ottofloh-api"
+main = "index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+AIRTABLE_BASE_ID = "appbtLFYW5FJqeDj2"
+AIRTABLE_TABLE_NAME = "Registrations"
+ALLOWED_ORIGIN = "https://ottofloh.de"
