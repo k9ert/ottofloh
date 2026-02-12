@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Worker API endpoint (no API key in frontend!)
-    const API_URL = 'https://ottofloh-api.kneunert.workers.dev';
+    const API_URL = 'https://ottofloh-api.<YOUR_CF_SUBDOMAIN>.workers.dev';
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
