@@ -20,7 +20,10 @@ def _geocode(address):
     resp.raise_for_status()
     data = resp.json()
     if data.get('status') != 'OK' or not data.get('results'):
-        raise RuntimeError(f"Geocoding failed for {address!r}: {data.get('status')}")
+        raise RuntimeError(
+            f"Geocoding failed for {address!r}: "
+            f"{data.get('status')} — {data.get('error_message', '(no detail)')}"
+        )
     loc = data['results'][0]['geometry']['location']
     result = (loc['lat'], loc['lng'])
     _geocode_cache[address] = result
