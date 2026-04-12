@@ -2,7 +2,29 @@ from pykml import parser
 from zipfile import ZipFile, BadZipFile
 import os
 import shutil
+import requests
 from lxml import etree
+from config import read_api_key_from_yaml
+
+_geocode_cache = {}
+
+def _geocode(address):
+    if address in _geocode_cache:
+        return _geocode_cache[address]
+    api_key = read_api_key_from_yaml('api_key')
+    resp = requests.get(
+        "https://maps.googleapis.com/maps/api/geocode/json",
+        params={'address': address, 'key': api_key},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get('status') != 'OK' or not data.get('results'):
+        raise RuntimeError(f"Geocoding failed for {address!r}: {data.get('status')}")
+    loc = data['results'][0]['geometry']['location']
+    result = (loc['lat'], loc['lng'])
+    _geocode_cache[address] = result
+    return result
 
 extracted = False
 kml_file_path = ""
@@ -47,10 +69,22 @@ def parse_kml_coordinates():
         for placemark in placemarks:
             try:
                 name = placemark.xpath('./kml:name/text()', namespaces=ns)[0]
-                coords = placemark.xpath('.//kml:coordinates/text()', namespaces=ns)[0].strip().split(',')
-                style_url = placemark.xpath('./kml:styleUrl/text()', namespaces=ns)[0]
-                coordinates_with_styles.append((coords[1], coords[0], style_url))  # lat, lon, styleUrl
-            except (IndexError, AttributeError) as e:
+                style_url_list = placemark.xpath('./kml:styleUrl/text()', namespaces=ns)
+                style_url = style_url_list[0] if style_url_list else ''
+
+                coords_text = placemark.xpath('.//kml:coordinates/text()', namespaces=ns)
+                if coords_text:
+                    parts = coords_text[0].strip().split(',')
+                    lat, lon = parts[1], parts[0]
+                else:
+                    address_text = placemark.xpath('./kml:address/text()', namespaces=ns)
+                    if not address_text:
+                        raise ValueError("placemark has neither <coordinates> nor <address>")
+                    lat_f, lon_f = _geocode(address_text[0])
+                    lat, lon = str(lat_f), str(lon_f)
+
+                coordinates_with_styles.append((lat, lon, style_url))  # lat, lon, styleUrl
+            except (IndexError, AttributeError, ValueError, RuntimeError) as e:
                 print(f"Warning: Skipping placemark due to missing data: {e}")
                 continue
                 
