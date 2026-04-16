@@ -89,29 +89,21 @@ Commit directly on `gh-pages`. No workflow runs for this branch — your commit 
 
 ### Step 3 — populate the new Google My Map from Airtable
 
-This is the manual step and the most error-prone. Everything here is a hand operation.
+**3a. Automated export (download + normalize)**
 
-**3a. Export CSV from Airtable**
+```bash
+AIRTABLE_API_KEY=pat… python scripts/airtable_export.py
+```
 
-1. Open the `Registrations` table, current view.
-2. Create a filtered view (don't mutate the main Grid view):
-   - **Create new → Grid**, name it `Map export YYYY`.
-   - Filter: `Status = confirmed`. Exclude everything else (test rows, unconfirmed, blank).
-3. Hide every field except `Name` and `Address`. (`Name` is primary and cannot be fully hidden — see 3b.)
-4. **Sidebar: hover the view → `⋯` menu → Download CSV.**
-5. File lands in `~/Downloads/Registrations-<view>.csv`.
+Or put `airtable_api_key: pat…` in `secrets.yaml`. The script:
+- Fetches all records where `Status = confirmed` via the Airtable API
+- Writes raw data to `build/airtable_raw.csv`
+- Produces `build/airtable_export.csv` — cleaned, deduped, with columns `Address` and `Name`
+  - `Address`: normalized to end with `, 85521 Ottobrunn`
+  - `Name`: mapped from the Airtable `Notes` field (becomes the pin description in My Maps)
+  - Original `Name` column is dropped to prevent `kmzparser.py` from reading it as the street
 
-**3b. Normalize the CSV**
-
-Most address rows will be missing the city/postal. Google My Maps' geocoder will reject them or geocode them somewhere in Germany. Normalization rules:
-
-- Ensure every address ends with `, 85521 Ottobrunn`.
-- Fix any manual weirdness: misordered tokens (`85521Ottobrunn, Straße 15`), stray commas (`Mozartstraße, 73, 85521, Ottobrunn`), double spaces.
-- Drop the `Name` column from the output entirely — if it's present in the import, My Maps will put it into each pin's description and the PDF parser will read it instead of the street (because `Name` gets picked up as the placemark title and `kmzparser.py` reads `<name>`).
-- Dedupe exact address matches.
-- Save as `Registrations-export-fixed.csv` with a single `Address` column, UTF-8, BOM is fine.
-
-A Python normalizer with this logic existed at `/tmp/normalize_addresses.py` during the 2026 rebuild. It was not committed — if you rebuild for 2027, either resurrect it from git history of this file or rewrite (~40 lines). Consider promoting it to `scripts/` on `master` next time.
+The normalizer is now `scripts/airtable_export.py` — it handles both the Airtable download and the CSV cleanup in one step. See *Step 3 — automated export* below.
 
 **3c. Import into the new Google My Map**
 
@@ -203,6 +195,7 @@ gh run view $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '
 - `src/kmzparser.py` — KML parser + Geocoding API fallback. Note the module-level `init()` call on import: reading the KMZ happens as a side effect of `from kmzparser import …`, so it must run in a cwd where `data.kmz` exists.
 - `src/config.py` — reads `api_key` from `secrets.yaml` (created fresh per workflow run from GH secret, gitignored locally).
 - `.github/workflows/deploy.yml` — the single workflow. Cron + push + manual.
+- `scripts/airtable_export.py` — downloads confirmed registrations from Airtable, normalizes addresses, outputs `build/airtable_raw.csv` + `build/airtable_export.csv`.
 - `worker/index.js` — Cloudflare Worker proxying Airtable. Deployed separately via `wrangler`, not by the GH Actions workflow.
 - `worker/README.md` — deploy instructions for the worker (check before deploying worker changes).
 - `index.html` (on `gh-pages` only) — the site. Hand-edited.
