@@ -4,7 +4,7 @@
 window.NostrCore = window.NostrCore || {};
 
 // Konstanten
-window.NostrCore.CHANNEL_ID = 'ottobrunner-hofflohmarkt-2025';
+window.NostrCore.CHANNEL_ID = 'ottobrunner-hofflohmarkt-2026';
 
 // Globale Variablen
 window.userPrivateKey = null;

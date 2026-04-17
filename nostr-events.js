@@ -84,7 +84,7 @@ window.NostrEvents.processAndPublishSignedEvent = async function(signedEvent, us
     // Für Kind 42 (Kanal-Nachricht) benötigen wir ein 'e'-Tag mit der Kanal-ID und 'root'-Marker
 
     // Hole die Kanal-ID - verwende die gespeicherte, falls verfügbar, ansonsten verwende einen Standard
-    const channelId = window.NostrRelay.channelInfo.id || 'ottobrunner-hofflohmarkt-2025';
+    const channelId = window.NostrRelay.channelInfo.id || 'ottobrunner-hofflohmarkt-2026';
 
     // Prüfe, ob wir ein 'e'-Tag mit 'root'-Marker haben
     let hasChannelRootTag = false;
