@@ -1,7 +1,8 @@
 /**
  * Cloudflare Worker proxy for Airtable registration.
  * Keeps AIRTABLE_API_KEY server-side (CF secret).
- * 
+ * Sends ntfy push to topic 'ottofloh_alerts' on each new registration.
+ *
  * Routes:
  *   POST /register  — create registration
  *   GET  /confirm?token=xxx — confirm registration
