@@ -18,14 +18,50 @@ Consequence: to change a date or wording on the site, edit `index.html` on `gh-p
 ```
 index.html form  →  registration.js  →  https://ottofloh-api.kneunert.workers.dev
                                               │
-                                              └──→  Airtable base appbtLFYW5FJqeDj2
-                                                    table "Registrations"
+                                              ├──→  Airtable base appbtLFYW5FJqeDj2 / table "Registrations"
+                                              │        │
+                                              │        └─ Airtable automation sends confirmation email
+                                              │           (link → ottofloh.de/confirm.html?token=…)
+                                              │
+                                              └──→  ntfy.sh topic "ottofloh_alerts" (push notification)
+
+user clicks email link
+  → ottofloh.de/confirm.html?token=…   (on gh-pages)
+  → JS extracts token, calls GET /confirm?token=…
+  → worker flips Airtable Status: new → confirmed
 ```
 
-- Cloudflare Worker in `worker/` (on `master`). Added in commit `5ae5863` to move the Airtable API key out of the browser. Worker secrets live in CF, not in this repo: `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID`, `AIRTABLE_TABLE_NAME`, `ALLOWED_ORIGIN`.
-- Endpoints: `POST /register` (create), `GET /confirm?token=…` (double opt-in).
-- The `Registrations` table's primary field is `Name` and **cannot be hidden** in Airtable — relevant when exporting CSV (see below).
-- Sensitive fields in the table: `ConfirmationToken`. Never export it to anything you upload externally (Google My Maps, pastebins, etc.).
+- Cloudflare Worker in `worker/` (on `master`). Added in commit `5ae5863` to move the Airtable API key out of the browser.
+- Endpoints: `POST /register` (create row, Status=`new`), `GET /confirm?token=…` (flip to Status=`confirmed`).
+- `Registrations` table primary field is `Name` and **cannot be hidden** in Airtable — relevant when exporting CSV (see below).
+- Sensitive fields: `ConfirmationToken`. Never export it to anything external (Google My Maps, pastebins, etc.).
+
+#### Worker — wrangler setup
+
+- `worker/wrangler.toml` holds only **public vars** (base ID, table name, `ALLOWED_ORIGIN`). These are visible in the repo — no secrets here.
+- **Secrets live in Cloudflare**, set via `wrangler secret put`:
+  - `AIRTABLE_API_KEY` — Airtable PAT with scope on the Registrations base
+  - (future: `ANTHROPIC_API_KEY` for the flyer feature — see issue #3)
+- **Deploy**: pushes to `master` touching `worker/**` auto-deploy via `.github/workflows/deploy-worker.yml` (uses `cloudflare/wrangler-action@v3` with `CLOUDFLARE_API_TOKEN` repo secret). Manual deploy is `cd worker && wrangler deploy` (requires local `wrangler login`).
+- **Live URL**: `https://ottofloh-api.kneunert.workers.dev` (default `*.workers.dev` subdomain, no custom domain yet — planned in issue #2).
+- The `worker/registration.js.new` file is a *template* of the frontend JS that lives on `gh-pages` as `registration.js`. It's kept on `master` for reference; the actual live file is hand-edited on `gh-pages` with the real API URL substituted for `<YOUR_CF_SUBDOMAIN>`.
+
+#### Email sending — Airtable automation (NOT the worker)
+
+The worker **does not send email**. The confirmation email is sent by an **Airtable automation** inside the Registrations base:
+
+- Trigger: a new record is created (or a record's `Status` becomes `new` with a populated `ConfirmationToken`).
+- Action: Airtable sends an email to the record's `Email` with a link of the form
+  `https://ottofloh.de/confirm.html?token={ConfirmationToken}`.
+- The email body/subject/sender is configured in the Airtable automation UI, not in this repo — edit it there.
+- Consequence: if confirmation emails stop arriving, check the Airtable automation run history **first** (most common cause: automation paused, or Airtable workspace hit its monthly automation-run quota). The worker having returned 200 only proves the *row* was created.
+
+#### ntfy push notifications
+
+- On every successful `POST /register`, the worker fires a ntfy push to `https://ntfy.sh/ottofloh_alerts` (title "Neue Anmeldung (unbestätigt)", body = name + address + email).
+- Topic is **public and unauthenticated** — anyone who knows `ottofloh_alerts` can read it. This is intentional (it's a low-value alert stream, not PII-critical beyond the registrant's own data), but keep it out of public docs/screenshots.
+- Subscribe from the ntfy iOS/Android app or `curl -s https://ntfy.sh/ottofloh_alerts/json`.
+- Failure to push is swallowed (`ctx.waitUntil(...catch...)`) — never blocks the registration response.
 
 ### 2. Map + PDF flow (Google My Maps → GH Actions → gh-pages)
 
@@ -51,6 +87,7 @@ gh-pages branch, assets/ folder  (JamesIves/github-pages-deploy-action, clean: f
   - **Geocoding API** (for the fallback in `kmzparser.py`)
   If only one is on, the build either renders a blank map (Geocoding off) or never gets to rendering (Static off). `REQUEST_DENIED` errors in the run log mean one of these is missing on the *correct* project — Cloud Console project selector gotcha.
 - `GITHUB_TOKEN` — standard, for the deploy action push to `gh-pages`.
+- `CLOUDFLARE_API_TOKEN` — used by `.github/workflows/deploy-worker.yml` to deploy the worker on `worker/**` pushes. Scope: Edit workers on the account owning `ottofloh-api`.
 
 ## Annual rebuild procedure (the ritual)
 
@@ -194,9 +231,11 @@ gh run view $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '
 - `src/main.py` — PDF renderer. Hardcoded title + date at `:73` and `:106`. Uses reportlab + Pillow.
 - `src/kmzparser.py` — KML parser + Geocoding API fallback. Note the module-level `init()` call on import: reading the KMZ happens as a side effect of `from kmzparser import …`, so it must run in a cwd where `data.kmz` exists.
 - `src/config.py` — reads `api_key` from `secrets.yaml` (created fresh per workflow run from GH secret, gitignored locally).
-- `.github/workflows/deploy.yml` — the single workflow. Cron + push + manual.
+- `.github/workflows/deploy.yml` — the PDF/map workflow. Cron (every 6h) + push to `master` + manual.
+- `.github/workflows/deploy-worker.yml` — auto-deploys the Cloudflare Worker on pushes to `worker/**`. Uses `cloudflare/wrangler-action@v3` + `CLOUDFLARE_API_TOKEN` repo secret.
 - `scripts/airtable_export.py` — downloads confirmed registrations from Airtable, normalizes addresses, outputs `build/airtable_raw.csv` + `build/airtable_export.csv`.
-- `worker/index.js` — Cloudflare Worker proxying Airtable. Deployed separately via `wrangler`, not by the GH Actions workflow.
-- `worker/README.md` — deploy instructions for the worker (check before deploying worker changes).
+- `worker/index.js` — Cloudflare Worker proxying Airtable + ntfy alerts. Auto-deployed by `deploy-worker.yml` on push.
+- `worker/wrangler.toml` — public vars only (base ID, table name, allowed origin). Secrets set out-of-band via `wrangler secret put`.
+- `worker/registration.js.new` — template of the gh-pages `registration.js` (reference only; live file is hand-edited on `gh-pages`).
 - `index.html` (on `gh-pages` only) — the site. Hand-edited.
 - `kmz.hash` (on `gh-pages`) — see bug #1, currently stuck.
