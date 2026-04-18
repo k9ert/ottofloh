@@ -42,6 +42,17 @@ function generateToken() {
   return Array.from(array, b => b.toString(36).padStart(2, '0')).join('').slice(0, 24);
 }
 
+async function notifyNtfy({ name, address, email }) {
+  return fetch('https://ntfy.sh/ottofloh_alerts', {
+    method: 'POST',
+    headers: {
+      'Title': 'Neue Anmeldung (unbestätigt)',
+      'Tags': 'house',
+    },
+    body: `${name}\n${address}\n${email}`,
+  });
+}
+
 async function airtableRequest(method, env, { path = '', body = null } = {}) {
   const url = `https://api.airtable.com/v0/${env.AIRTABLE_BASE_ID}/${env.AIRTABLE_TABLE_NAME}${path}`;
   const opts = {
@@ -55,7 +66,7 @@ async function airtableRequest(method, env, { path = '', body = null } = {}) {
   return fetch(url, opts);
 }
 
-async function handleRegister(request, env) {
+async function handleRegister(request, env, ctx) {
   const origin = request.headers.get('Origin') || '';
   
   let data;
@@ -102,6 +113,8 @@ async function handleRegister(request, env) {
     return jsonResponse({ error: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es später erneut.' }, 500, origin, env);
   }
 
+  ctx.waitUntil(notifyNtfy({ name, address, email }).catch(e => console.error('ntfy error:', e)));
+
   return jsonResponse({ ok: true, message: 'Anmeldung erfolgreich! Bitte bestätigen Sie Ihre E-Mail.' }, 200, origin, env);
 }
 
@@ -145,7 +158,7 @@ async function handleConfirm(request, env) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
     const url = new URL(request.url);
 
@@ -156,7 +169,7 @@ export default {
 
     // Route
     if (url.pathname === '/register' && request.method === 'POST') {
-      return handleRegister(request, env);
+      return handleRegister(request, env, ctx);
     }
     if (url.pathname === '/confirm' && request.method === 'GET') {
       return handleConfirm(request, env);
