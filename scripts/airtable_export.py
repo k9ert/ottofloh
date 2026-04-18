@@ -92,25 +92,38 @@ def write_clean(records):
     Columns: Address, Name (mapped from Airtable 'Notes' field).
     'Name' in My Maps becomes the pin description.
     """
-    seen = set()
+    by_addr = {}  # normalized addr -> list of (raw_addr, name_field)
+    skipped_blank = 0
     rows = []
     for r in records:
         fields = r.get("fields", {})
         raw_addr = fields.get("Address", "").strip()
         if not raw_addr:
+            skipped_blank += 1
             continue
         addr = normalize_address(raw_addr)
-        if addr in seen:
-            continue
-        seen.add(addr)
-        rows.append({"Address": addr, "Name": fields.get("Notes", "")})
+        name_field = fields.get("Name", "")
+        if addr not in by_addr:
+            by_addr[addr] = []
+            rows.append({"Address": addr, "Name": fields.get("Notes", "")})
+        by_addr[addr].append((raw_addr, name_field))
 
     with open(CLEAN_CSV, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.DictWriter(f, fieldnames=["Address", "Name"])
         w.writeheader()
         for row in rows:
             w.writerow(row)
-    print(f"Clean CSV: {CLEAN_CSV} ({len(rows)} addresses, {len(records) - len(rows)} skipped/deduped)")
+
+    dupe_groups = {addr: entries for addr, entries in by_addr.items() if len(entries) > 1}
+    total_dupes = sum(len(entries) - 1 for entries in dupe_groups.values())
+    print(f"Clean CSV: {CLEAN_CSV} ({len(rows)} addresses, {total_dupes} deduped, {skipped_blank} blank)")
+
+    if dupe_groups:
+        print(f"\n--- Duplicates ({len(dupe_groups)} address(es), {total_dupes} extra row(s)) ---")
+        for addr, entries in dupe_groups.items():
+            print(f"  {addr}")
+            for raw_addr, name in entries:
+                print(f"    - {name!r:30s}  raw: {raw_addr!r}")
 
 
 def main():
