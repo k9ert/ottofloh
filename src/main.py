@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import requests
 from config import read_api_key_from_yaml
 from reportlab.lib.pagesizes import A4
@@ -50,7 +51,8 @@ def write_address_list(c, start_x=70, start_y=380, column_width=165, max_lines_p
             y = start_y
             # No need to drawImage again unless you want the map on every page
         
-        text = f'{i + 1:02}. {address}'
+        short_address = re.sub(r',\s*\d{5}\s+Ottobrunn\s*$', '', address)
+        text = f'{i + 1:02}. {short_address}'
         if address == "Hirtenstraße 17":
             c.setFont("Helvetica-Bold", 10)
         c.drawString(x, y, text)
