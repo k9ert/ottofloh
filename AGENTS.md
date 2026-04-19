@@ -4,29 +4,29 @@ Operational notes for the Ottobrunner Hofflohmarkt site. Read this before touchi
 
 ## Repo layout
 
-Two branches, both load-bearing, **both hand-edited in different ways**:
+Two branches:
 
-- `master` — source of truth for the PDF generator (`src/`), the GH Actions workflow, the Cloudflare Worker (`worker/`), and the dependencies (`requirements.txt`). Never contains `index.html` or any site assets.
-- `gh-pages` — the live website. Contains `index.html`, registration/Nostr/payment JS, CSS, photos, and `assets/Ottobrunner Hofflohmarkt <year>.pdf`. **`index.html` is hand-edited on this branch** — it is not generated from `master`. The workflow pushes only into `assets/`; everything else is manually maintained.
+- `master` — source of truth for **everything** authored: the site (`frontend/`), the PDF generator (`src/`), the Cloudflare Worker (`worker/`), GH Actions workflows, and dependencies (`requirements.txt`).
+- `gh-pages` — **generated** output. Contains `frontend/` contents at root (pushed by `deploy-frontend.yml`), `assets/Ottobrunner Hofflohmarkt <year>.pdf` (pushed by `deploy.yml`), and `kmz.hash`. Do not hand-edit this branch — any commits here get overwritten on the next frontend deploy (which uses `clean: true` with `clean-exclude: [assets, kmz.hash]`).
 
-Consequence: to change a date or wording on the site, edit `index.html` on `gh-pages` directly. To change the PDF generator, edit `src/` on `master`.
+Consequence: to change a date or wording on the site, edit `frontend/index.html` on `master` and push. The workflow mirrors it to `gh-pages`. To change the PDF generator, edit `src/` on `master`.
 
 ## Live components
 
 ### 1. Registration flow (Airtable)
 
 ```
-index.html form  →  registration.js  →  https://ottofloh-api.kneunert.workers.dev
-                                              │
-                                              ├──→  Airtable base appbtLFYW5FJqeDj2 / table "Registrations"
-                                              │        │
-                                              │        └─ Airtable automation sends confirmation email
-                                              │           (link → ottofloh.de/confirm.html?token=…)
-                                              │
-                                              └──→  ntfy.sh topic "ottofloh_alerts" (push notification)
+frontend/index.html form  →  frontend/registration.js  →  https://ottofloh-api.kneunert.workers.dev
+                                                               │
+                                                               ├──→  Airtable base appbtLFYW5FJqeDj2 / table "Registrations"
+                                                               │        │
+                                                               │        └─ Airtable automation sends confirmation email
+                                                               │           (link → ottofloh.de/confirm.html?token=…)
+                                                               │
+                                                               └──→  ntfy.sh topic "ottofloh_alerts" (push notification)
 
 user clicks email link
-  → ottofloh.de/confirm.html?token=…   (on gh-pages)
+  → ottofloh.de/confirm.html?token=…   (served from gh-pages, sourced from frontend/confirm.html on master)
   → JS extracts token, calls GET /confirm?token=…
   → worker flips Airtable Status: new → confirmed
 ```
@@ -44,7 +44,7 @@ user clicks email link
   - (future: `ANTHROPIC_API_KEY` for the flyer feature — see issue #3)
 - **Deploy**: pushes to `master` touching `worker/**` auto-deploy via `.github/workflows/deploy-worker.yml` (uses `cloudflare/wrangler-action@v3` with `CLOUDFLARE_API_TOKEN` repo secret). Manual deploy is `cd worker && wrangler deploy` (requires local `wrangler login`).
 - **Live URL**: `https://ottofloh-api.kneunert.workers.dev` (default `*.workers.dev` subdomain, no custom domain yet — planned in issue #2).
-- The `worker/registration.js.new` file is a *template* of the frontend JS that lives on `gh-pages` as `registration.js`. It's kept on `master` for reference; the actual live file is hand-edited on `gh-pages` with the real API URL substituted for `<YOUR_CF_SUBDOMAIN>`.
+- The live frontend registration JS is `frontend/registration.js` on `master`. The legacy `worker/registration.js.new` template is obsolete once the frontend lives on master — delete it when convenient.
 
 #### Email sending — Airtable automation (NOT the worker)
 
@@ -104,13 +104,12 @@ Edit `.github/workflows/deploy.yml`:
 
 Commit + push to `master`. Workflow will trigger automatically.
 
-### Step 2 — bump year/date on `gh-pages` (`index.html`)
+### Step 2 — bump year/date in `frontend/index.html` on `master`
 
-There are ~10 places in `index.html` that need updating for a new year. Grep for the old year first:
+There are ~10 places in `frontend/index.html` that need updating for a new year. Grep for the old year first:
 
 ```
-git checkout gh-pages
-grep -n "2025\|Mai\|April" index.html
+grep -n "2025\|Mai\|April" frontend/index.html
 ```
 
 Touchpoints (line numbers drift — re-grep):
@@ -122,7 +121,7 @@ Touchpoints (line numbers drift — re-grep):
 - Map link button (`<a href="https://bit.ly/…">`) — each year gets a new short link pointing at the new My Map
 - PDF download link (`<a href="assets/Ottobrunner Hofflohmarkt YYYY.pdf">`)
 
-Commit directly on `gh-pages`. No workflow runs for this branch — your commit *is* the deploy.
+Commit + push `master`. `.github/workflows/deploy-frontend.yml` mirrors `frontend/` to `gh-pages`.
 
 ### Step 3 — populate the new Google My Map from Airtable
 
@@ -203,7 +202,7 @@ Don't change the repo's configured remote — just use the per-command override.
 
 ### 5. `gh-pages` can fall **hundreds** of commits behind origin
 
-The cron runs every 6h and pushes a new commit each time (see bug #1). A week unattended = ~28 commits. A year = ~1400. We saw 994 at one point. Always `git fetch origin gh-pages && git merge --ff-only origin/gh-pages` before editing `index.html`.
+The cron runs every 6h and pushes a new commit each time (see bug #1). A week unattended = ~28 commits. A year = ~1400. We saw 994 at one point. You no longer need to edit `gh-pages` by hand (see repo layout), but keep this in mind if you ever need to check it out locally — `git fetch origin gh-pages` will pull a lot.
 
 ## Commands
 
@@ -231,11 +230,12 @@ gh run view $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '
 - `src/main.py` — PDF renderer. Hardcoded title + date at `:73` and `:106`. Uses reportlab + Pillow.
 - `src/kmzparser.py` — KML parser + Geocoding API fallback. Note the module-level `init()` call on import: reading the KMZ happens as a side effect of `from kmzparser import …`, so it must run in a cwd where `data.kmz` exists.
 - `src/config.py` — reads `api_key` from `secrets.yaml` (created fresh per workflow run from GH secret, gitignored locally).
-- `.github/workflows/deploy.yml` — the PDF/map workflow. Cron (every 6h) + push to `master` + manual.
+- `.github/workflows/deploy.yml` — the PDF/map workflow. Cron (every 6h) + push to `master` + manual. Pushes only `assets/` to `gh-pages` with `clean: false`.
+- `.github/workflows/deploy-frontend.yml` — mirrors `frontend/` to `gh-pages` on pushes to `master` touching `frontend/**`. Uses `JamesIves/github-pages-deploy-action@v4` with `clean: true` + `clean-exclude: [assets, kmz.hash]`.
 - `.github/workflows/deploy-worker.yml` — auto-deploys the Cloudflare Worker on pushes to `worker/**`. Uses `cloudflare/wrangler-action@v3` + `CLOUDFLARE_API_TOKEN` repo secret.
+- `frontend/` — the live site source. `index.html`, `confirm.html`, `registration.html`, all JS/CSS, `photos/`, `crp-photos/`, `favicon.svg`, `CNAME`. Edit here, commit, push — workflow mirrors to `gh-pages`.
 - `scripts/airtable_export.py` — downloads confirmed registrations from Airtable, normalizes addresses, outputs `build/airtable_raw.csv` + `build/airtable_export.csv`.
 - `worker/index.js` — Cloudflare Worker proxying Airtable + ntfy alerts. Auto-deployed by `deploy-worker.yml` on push.
 - `worker/wrangler.toml` — public vars only (base ID, table name, allowed origin). Secrets set out-of-band via `wrangler secret put`.
-- `worker/registration.js.new` — template of the gh-pages `registration.js` (reference only; live file is hand-edited on `gh-pages`).
-- `index.html` (on `gh-pages` only) — the site. Hand-edited.
+- `worker/registration.js.new` — obsolete reference template; live file is now `frontend/registration.js`. Safe to delete.
 - `kmz.hash` (on `gh-pages`) — see bug #1, currently stuck.

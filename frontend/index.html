@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ottobrunner Hofflohmarkt 2026</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Playfair+Display:wght@700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- Add Nostr tools library (latest version 2.12.0) -->
+    <script src="https://unpkg.com/nostr-tools@2.12.0/lib/nostr.bundle.js"></script>
+    <script>
+        // Ensure WebSocket is available
+        if (typeof WebSocket === 'undefined') {
+            console.error("WebSocket is not defined in this environment");
+        } else {
+            console.log("WebSocket is available");
+        }
+
+        // Check if the library is loaded correctly
+        if (window.NostrTools) {
+            console.log("NostrTools v2 loaded successfully");
+
+            // Log available functions for debugging
+            console.log("Available NostrTools functions:", Object.keys(window.NostrTools));
+        } else {
+            console.error("NostrTools not loaded correctly");
+        }
+
+        // Define a global function to check if the library is ready
+        window.isNostrReady = function () {
+            return window.NostrTools !== undefined;
+        };
+    </script>
+    <!-- Nostr Chat Modules (Reihenfolge ist wichtig) -->
+    <script>
+        // Initialisiere globale Objekte
+        window.NostrUtils = {};
+        window.NostrCrypto = {};
+        window.NostrProfile = {};
+        window.profileCache = {};
+    </script>
+    <!-- Chart.js für Diagramme -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Blink Pay Button script für Bitcoin-Zahlungen -->
+    <script src="https://widget.twentyone.ist/js/blink-pay-button.js"></script>
+    <script src="bitcoin-payment.js"></script>
+
+    <link rel="stylesheet" href="nostr-chat.css">
+    <!-- Nostr-Module (Reihenfolge ist wichtig) -->
+    <script src="nostr-utils.js"></script>
+    <script src="nostr-crypto.js"></script>
+    <script src="nostr-core.js"></script>
+    <script src="nostr-profile.js"></script>
+    <script src="nostr-ui-core.js"></script>
+    <script src="nostr-ui-messages.js"></script>
+    <script src="nostr-relay.js"></script>
+    <script src="nostr-events.js"></script>
+    <script src="nostr-chat.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Ottobrunner Hofflohmarkt 2026</h1>
+        <h2>Samstag, 18. April 2026, 14:00 - 18:00 Uhr</h2>
+
+        <div class="section">
+            <p>Eine Benefizveranstaltung zugunsten des CRP-Bangladesch</p>
+            <p><a href="https://www.crp-bangladesh.org" target="_blank" class="crp-link">www.crp-bangladesh.org</a></p>
+        </div>
+
+        <div class="section highlight-section">
+            <h3>Rückblick 2026</h3>
+            <p class="success-message">Mit 44 Garagen war der Ottobrunner Hofflohmarkt 2026 wieder ein voller Erfolg. Wir sehen uns wieder 2027!</p>
+        </div>
+
+        <div class="section crp-section">
+            <h3>CRP-Bangladesch: Rehabilitation für Menschen mit Behinderungen</h3>
+
+            <div class="crp-container">
+                <div class="crp-image-container">
+                    <img src="crp-photos/crp-center.jpg" alt="CRP Zentrum in Bangladesch" class="crp-image">
+                </div>
+                <div class="crp-text">
+                    <p>Das Centre for the Rehabilitation of the Paralysed (CRP) ist eine gemeinnützige Organisation in
+                        Bangladesch, die sich auf die Rehabilitation von Menschen mit Behinderungen spezialisiert hat.
+                        Das CRP bietet umfassende Dienstleistungen an, darunter medizinische Versorgung, Rehabilitation,
+                        Bildung und berufliche Ausbildung.</p>
+                    <p>Der Erlös des Ottobrunner Hofflohmarkts in Form der Teilnahmegebühren kommt vollständig dem
+                        CRP-Bangladesch zugute und unterstützt damit Menschen, die dringend Hilfe benötigen.</p>
+                    <p><a href="https://www.crp-bangladesh.org" target="_blank"
+                            class="crp-link">www.crp-bangladesh.org</a></p>
+                </div>
+            </div>
+
+            <div class="crp-founder">
+                <h4>Valerie Taylor: Die Gründerin des CRP</h4>
+                <div class="crp-container">
+                    <div class="crp-image-container">
+                        <img src="crp-photos/valerie.png" alt="Valerie Taylor, Gründerin des CRP" class="crp-image">
+                    </div>
+                    <div class="crp-text">
+                        <p>Valerie Ann Taylor OBE ist eine britisch-bangladeschische Physiotherapeutin und Humanitärin,
+                            die 1979 das Centre for the Rehabilitation of the Paralysed (CRP) in Bangladesch gründete.
+                        </p>
+                        <p>Nach ihrer Ankunft in Bangladesch im Jahr 1969 erkannte sie den dringenden Bedarf an
+                            Rehabilitationsdiensten für Menschen mit Rückenmarksverletzungen und anderen Behinderungen.
+                            Was als kleine Initiative mit nur vier Patienten begann, hat sich zu einem umfassenden
+                            Netzwerk von Rehabilitationszentren in ganz Bangladesch entwickelt.</p>
+                        <p>Für ihre außergewöhnliche humanitäre Arbeit wurde Valerie Taylor mit zahlreichen
+                            Auszeichnungen geehrt, darunter der Order of the British Empire (OBE) und die
+                            bangladeschische Staatsangehörigkeit als Anerkennung für ihren Beitrag zum Land.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spenden-Sektion wurde in eine eigene Kachel verschoben -->
+        </div>
+
+        <div class="section donation-section">
+            <h3>Spenden an das CRP</h3>
+            <div class="donation-info">
+                <p><strong>IBAN:</strong> DE27 7015 0000 1000 0569 76</p>
+                <p><strong>Kontoinhaber:</strong> Freundeskreis des CRP Bangladesch e.V.</p>
+                <p>Der deutsche Verein ist als gemeinnützig anerkannt.</p>
+                <p>Ab Spenden in Höhe von 200 Euro kann eine Spendenquittung ausgestellt werden, die Sie von der
+                    Steuer absetzen können.</p>
+                <p>Für eine Spendenquittung senden Sie bitte eine E-Mail mit dem Betreff "Spendenbescheinigung",
+                    Ihrem Namen, Ihrer Adresse und der Höhe der Spende an:
+                    <a href="mailto:ottofloh964@gmail.com?subject=Spendenbescheinigung"
+                        class="crp-link">ottofloh964@gmail.com</a>
+                </p>
+
+                <div class="bitcoin-donation">
+                    <h4>Mit Bitcoin spenden</h4>
+                    <p>Sie können auch schnell und einfach mit Bitcoin spenden:</p>
+                    <!-- Blink Pay Button widget -->
+                    <div id="blink-pay-button-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section stats-section">
+            <h3>Wachsender Erfolg seit 2013!</h3>
+            <p class="lead-text">Der Ottobrunner Hofflohmarkt erfreut sich immer größerer Beliebtheit</p>
+            <div class="stats-highlight">
+                <span class="stats-number">44</span>
+                <span class="stats-label">Garagen im Jahr 2026</span>
+            </div>
+            <p class="stats-description">
+                Von 14 Garagen im Jahr 2018 auf 44 Teilnehmer in 2026 – unser Hofflohmarkt lebt!
+                Seien Sie 2027 dabei und werden Sie Teil dieser Erfolgsgeschichte.
+            </p>
+            <div class="chart-container">
+                <canvas id="participantsChart"></canvas>
+            </div>
+            <p class="stats-footnote">
+                Seit 2019 verzeichnen wir einen kontinuierlichen Anstieg der Teilnehmerzahlen.
+                Sichern Sie sich jetzt Ihren Platz für 2027!
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>Impressionen vom letzten Jahr:</h3>
+            <div class="carousel">
+                <div class="carousel-container" id="carousel-container">
+                    <!-- Images will be inserted here by JavaScript -->
+                </div>
+                <button class="carousel-button prev">❮</button>
+                <button class="carousel-button next">❯</button>
+                <div class="carousel-dots" id="carousel-dots"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Nostr Chat</h3>
+            <p>Chatten Sie mit anderen Besuchern und Verkäufern des Hofflohmarkts</p>
+
+            <div id="nostr-login-container">
+                <div class="chat-login-container">
+                    <p>Um am Chat teilzunehmen, benötigen Sie einen Nostr-Schlüssel. Sie können einen neuen Schlüssel
+                        erstellen, eine bestehende Nostr-Erweiterung verwenden oder Ihren eigenen nsec-Schlüssel eingeben.</p>
+                    <button id="generate-key-button" class="chat-login-button">Neuen Schlüssel erstellen</button>
+                    <button id="login-extension-button" class="chat-login-button">Mit Nostr-Erweiterung anmelden</button>
+                    <button id="login-nsec-button" class="chat-login-button">Eigenen nsec-Schlüssel verwenden</button>
+
+                    <!-- Dialog für nsec-Schlüssel Eingabe (standardmäßig versteckt) -->
+                    <div id="nsec-input-dialog" style="display: none; margin-top: 15px;">
+                        <p>Bitte geben Sie Ihren nsec-Schlüssel ein:</p>
+                        <input type="password" id="nsec-input" class="chat-input" style="width: 100%; margin-bottom: 10px;"
+                               placeholder="nsec1..." autocomplete="off">
+                        <div style="display: flex; justify-content: space-between;">
+                            <button id="nsec-submit-button" class="chat-login-button">Anmelden</button>
+                            <button id="nsec-cancel-button" class="chat-login-button" style="background-color: #f44336;">Abbrechen</button>
+                        </div>
+                        <p><small>Hinweis: Ihr Schlüssel wird nur lokal in Ihrem Browser gespeichert und nicht an Server übertragen.</small></p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="nostr-chat-interface" style="display: none;">
+                <div id="loading-indicator" class="loading-indicator">
+                    <div class="spinner"></div>
+                    <p>Verbindung wird hergestellt und Nachrichten werden geladen...</p>
+                </div>
+
+                <div id="chat-container" class="chat-container"></div>
+
+                <div class="chat-input-container">
+                    <input type="text" id="chat-input" class="chat-input" placeholder="Nachricht eingeben...">
+                    <button id="chat-send-button" class="chat-send-button">Senden</button>
+                </div>
+
+                <p class="chat-info">
+                    <small>Angemeldet als <span id="reset-identity-trigger">Sie</span>. Ihre Nachrichten werden mit
+                        Ihrem Nostr-Schlüssel signiert.</small>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Teilnehmerentwicklung Diagramm
+            const ctx = document.getElementById('participantsChart').getContext('2d');
+
+            // Daten für das Diagramm
+            const years = ['2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+            const participants = [44, 22, 23, 19, 14, 14, 39, 34, 39, null, 65, 69, 42, 44];
+
+            // Farben für das Diagramm
+            const gradientFill = ctx.createLinearGradient(0, 0, 0, 300);
+            gradientFill.addColorStop(0, 'rgba(26, 115, 232, 0.6)');
+            gradientFill.addColorStop(1, 'rgba(26, 115, 232, 0.1)');
+
+            // Diagramm erstellen
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Teilnehmende Garagen',
+                        data: participants,
+                        borderColor: '#1a73e8',
+                        backgroundColor: gradientFill,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#1a73e8',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    family: "'Open Sans', sans-serif",
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#333',
+                            bodyColor: '#333',
+                            borderColor: '#ddd',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function (context) {
+                                    const value = context.raw;
+                                    if (value === null) return 'Keine Daten verfügbar';
+                                    return `${value} ${value === 1 ? 'Garage' : 'Garagen'}`;
+                                },
+                                title: function (context) {
+                                    return `Jahr ${context[0].label}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Open Sans', sans-serif"
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: {
+                                    family: "'Open Sans', sans-serif"
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Karussell für Bilder
+            const container = document.getElementById('carousel-container');
+            const dotsContainer = document.getElementById('carousel-dots');
+            let currentSlide = 0;
+
+            // Bilder für das Karussell
+            const images = [
+                //'photos/image1.jpg',
+                'photos/image2.jpg',
+                'photos/image3.jpg',
+                'photos/image4.jpg',
+                'photos/image5.jpg',
+                'photos/image6.png',
+                'photos/image7.jpg'
+            ];
+
+            // Bilder und Punkte einfügen
+            images.forEach((image, index) => {
+                // Slide erstellen
+                const slide = document.createElement('div');
+                slide.className = 'carousel-slide';
+
+                // Bild erstellen
+                const img = document.createElement('img');
+                img.src = image;
+                img.alt = `Flohmarkt Impression ${index + 1}`;
+
+                // Zum Slide hinzufügen
+                slide.appendChild(img);
+
+                // Zum Container hinzufügen
+                container.appendChild(slide);
+
+                // Punkt erstellen
+                const dot = document.createElement('div');
+                dot.className = 'dot';
+                if (index === 0) dot.classList.add('active');
+
+                // Event-Listener für den Punkt
+                dot.addEventListener('click', () => {
+                    goToSlide(index);
+                });
+
+                // Zum Dots-Container hinzufügen
+                dotsContainer.appendChild(dot);
+            });
+
+            // Funktion zum Wechseln der Slides
+            function goToSlide(n) {
+                currentSlide = n;
+                container.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+                // Aktiven Punkt aktualisieren
+                document.querySelectorAll('.dot').forEach((dot, index) => {
+                    dot.classList.toggle('active', index === currentSlide);
+                });
+            }
+
+            // Event-Listener für die Buttons
+            document.querySelector('.carousel-button.prev').addEventListener('click', () => {
+                currentSlide = (currentSlide - 1 + images.length) % images.length;
+                goToSlide(currentSlide);
+            });
+
+            document.querySelector('.carousel-button.next').addEventListener('click', () => {
+                currentSlide = (currentSlide + 1) % images.length;
+                goToSlide(currentSlide);
+            });
+
+            // Automatischer Wechsel alle 5 Sekunden
+            setInterval(() => {
+                currentSlide = (currentSlide + 1) % images.length;
+                goToSlide(currentSlide);
+            }, 5000);
+        });
+    </script>
+</body>
+
+</html>
