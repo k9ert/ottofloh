@@ -5,7 +5,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorDetails = document.getElementById('error-details');
 
     // Worker API endpoint (no API key in frontend!)
-    const API_URL = 'https://ottofloh-api.kneunert.workers.dev';
+    const API_URL = window.location.hostname === 'ottofloh-staging.pages.dev'
+        ? 'https://ottofloh-api-staging.kneunert.workers.dev'
+        : 'https://ottofloh-api.kneunert.workers.dev';
 
     // Token aus der URL extrahieren
     const urlParams = new URLSearchParams(window.location.search);

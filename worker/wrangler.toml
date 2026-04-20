@@ -6,3 +6,13 @@ compatibility_date = "2024-01-01"
 AIRTABLE_BASE_ID = "appbtLFYW5FJqeDj2"
 AIRTABLE_TABLE_NAME = "Registrations"
 ALLOWED_ORIGIN = "https://ottofloh.de"
+NTFY_TOPIC = "ottofloh_alerts"
+
+[env.staging]
+name = "ottofloh-api-staging"
+
+[env.staging.vars]
+AIRTABLE_BASE_ID = "appaRNudq6rTsAl5z"
+AIRTABLE_TABLE_NAME = "Registrations"
+ALLOWED_ORIGIN = "https://ottofloh-staging.pages.dev"
+NTFY_TOPIC = "ottofloh_alerts_staging"
