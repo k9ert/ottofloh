@@ -87,7 +87,14 @@ gh-pages branch, assets/ folder  (JamesIves/github-pages-deploy-action, clean: f
   - **Geocoding API** (for the fallback in `kmzparser.py`)
   If only one is on, the build either renders a blank map (Geocoding off) or never gets to rendering (Static off). `REQUEST_DENIED` errors in the run log mean one of these is missing on the *correct* project — Cloud Console project selector gotcha.
 - `GITHUB_TOKEN` — standard, for the deploy action push to `gh-pages`.
-- `CLOUDFLARE_API_TOKEN` — used by `.github/workflows/deploy-worker.yml` to deploy the worker on `worker/**` pushes. Scope: Edit workers on the account owning `ottofloh-api`.
+- `CLOUDFLARE_API_TOKEN` — used by `.github/workflows/deploy-worker.yml` (worker) and `.github/workflows/deploy-staging.yml` (CF Pages staging deploy). Scopes required: `Workers Scripts:Edit` + `Cloudflare Pages:Edit`.
+- `CLOUDFLARE_ACCOUNT_ID` — used by `deploy-staging.yml`. Not secret (account IDs are fine to expose) but kept as a GH secret for consistency. Find it in CF dashboard → right sidebar.
+
+## Staging environment
+
+- Frontend preview: `https://ottofloh-staging.pages.dev/` (Cloudflare Pages, project `ottofloh-staging`).
+- `.github/workflows/deploy-staging.yml` runs on `pull_request` events touching `frontend/**` and deploys to the fixed `--branch=main` alias of the CF Pages project — i.e. **one staging URL, last PR wins**.
+- Backend (Phase 3, not yet wired): a separate staging Worker at `ottofloh-api-staging.kneunert.workers.dev` pointed at a separate Airtable base (`appaRNudq6rTsAl5z`) with its own ntfy topic (`ottofloh_alerts_staging`). Until Phase 3 lands, `frontend/registration.js` and `frontend/confirm.js` still talk to the **production** Worker — registrations made on the staging URL will hit prod Airtable and prod ntfy.
 
 ## Annual rebuild procedure (the ritual)
 
@@ -232,6 +239,7 @@ gh run view $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '
 - `src/config.py` — reads `api_key` from `secrets.yaml` (created fresh per workflow run from GH secret, gitignored locally).
 - `.github/workflows/deploy.yml` — the PDF/map workflow. Cron (every 6h) + push to `master` + manual. Pushes only `assets/` to `gh-pages` with `clean: false`.
 - `.github/workflows/deploy-frontend.yml` — mirrors `frontend/` to `gh-pages` on pushes to `master` touching `frontend/**`. Uses `JamesIves/github-pages-deploy-action@v4` with `clean: true` + `clean-exclude: [assets, kmz.hash]`.
+- `.github/workflows/deploy-staging.yml` — deploys `frontend/` to CF Pages project `ottofloh-staging` on `pull_request` events touching `frontend/**`. Fixed URL `ottofloh-staging.pages.dev` (last PR wins — see staging section).
 - `.github/workflows/deploy-worker.yml` — auto-deploys the Cloudflare Worker on pushes to `worker/**`. Uses `cloudflare/wrangler-action@v3` + `CLOUDFLARE_API_TOKEN` repo secret.
 - `frontend/` — the live site source. `index.html`, `confirm.html`, `registration.html`, all JS/CSS, `photos/`, `crp-photos/`, `favicon.svg`, `CNAME`. Edit here, commit, push — workflow mirrors to `gh-pages`.
 - `scripts/airtable_export.py` — downloads confirmed registrations from Airtable, normalizes addresses, outputs `build/airtable_raw.csv` + `build/airtable_export.csv`.
