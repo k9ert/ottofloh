@@ -44,7 +44,7 @@ user clicks email link
   - (future: `ANTHROPIC_API_KEY` for the flyer feature — see issue #3)
 - **Deploy**: pushes to `master` touching `worker/**` auto-deploy via `.github/workflows/deploy-worker.yml` (uses `cloudflare/wrangler-action@v3` with `CLOUDFLARE_API_TOKEN` repo secret). Manual deploy is `cd worker && wrangler deploy` (requires local `wrangler login`).
 - **Live URL**: `https://ottofloh-api.kneunert.workers.dev` (default `*.workers.dev` subdomain, no custom domain yet — planned in issue #2).
-- The live frontend registration JS is `frontend/registration.js` on `master`. The legacy `worker/registration.js.new` template is obsolete once the frontend lives on master — delete it when convenient.
+- The live frontend registration JS is `frontend/registration.js` on `master`. Picks worker API URL by `window.location.hostname` (prod vs staging).
 
 #### Email sending — Airtable automation (NOT the worker)
 
@@ -92,9 +92,12 @@ gh-pages branch, assets/ folder  (JamesIves/github-pages-deploy-action, clean: f
 
 ## Staging environment
 
-- Frontend preview: `https://ottofloh-staging.pages.dev/` (Cloudflare Pages, project `ottofloh-staging`).
-- `.github/workflows/deploy-staging.yml` runs on `pull_request` events touching `frontend/**` and deploys to the fixed `--branch=main` alias of the CF Pages project — i.e. **one staging URL, last PR wins**.
-- Backend (Phase 3, not yet wired): a separate staging Worker at `ottofloh-api-staging.kneunert.workers.dev` pointed at a separate Airtable base (`appaRNudq6rTsAl5z`) with its own ntfy topic (`ottofloh_alerts_staging`). Until Phase 3 lands, `frontend/registration.js` and `frontend/confirm.js` still talk to the **production** Worker — registrations made on the staging URL will hit prod Airtable and prod ntfy.
+- **Frontend**: `https://ottofloh-staging.pages.dev/` (Cloudflare Pages, project `ottofloh-staging`). `.github/workflows/deploy-staging.yml` runs on `pull_request` events touching `frontend/**` and deploys to the fixed `--branch=main` alias — i.e. **one staging URL, last PR wins**.
+- **Backend worker**: `https://ottofloh-api-staging.kneunert.workers.dev` (separate Cloudflare Worker named `ottofloh-api-staging`). Deployed by `deploy-worker.yml` via `wrangler deploy --env staging` on every push to `master` touching `worker/**`. Same code as prod; different env vars.
+- **Airtable base**: `appaRNudq6rTsAl5z` (duplicate of prod schema + automations). Airtable automation on this base sends confirmation emails pointing at `ottofloh-staging.pages.dev/confirm.html`.
+- **ntfy topic**: `ottofloh_alerts_staging` (separate from prod's `ottofloh_alerts`).
+- **API URL selection**: `frontend/registration.js` and `frontend/confirm.js` pick the worker URL by `window.location.hostname` — `ottofloh-staging.pages.dev` → staging worker, everything else → prod worker.
+- **Staging secret setup** (one-time, per Airtable PAT rotation): `cd worker && wrangler secret put AIRTABLE_API_KEY --env staging`. The PAT must be scoped to the staging base (appaRNudq6rTsAl5z). The prod secret and the staging secret are **independent** — rotating one doesn't rotate the other.
 
 ## Annual rebuild procedure (the ritual)
 
@@ -240,10 +243,9 @@ gh run view $(gh run list --workflow deploy.yml --limit 1 --json databaseId -q '
 - `.github/workflows/deploy.yml` — the PDF/map workflow. Cron (every 6h) + push to `master` + manual. Pushes only `assets/` to `gh-pages` with `clean: false`.
 - `.github/workflows/deploy-frontend.yml` — mirrors `frontend/` to `gh-pages` on pushes to `master` touching `frontend/**`. Uses `JamesIves/github-pages-deploy-action@v4` with `clean: true` + `clean-exclude: [assets, kmz.hash]`.
 - `.github/workflows/deploy-staging.yml` — deploys `frontend/` to CF Pages project `ottofloh-staging` on `pull_request` events touching `frontend/**`. Fixed URL `ottofloh-staging.pages.dev` (last PR wins — see staging section).
-- `.github/workflows/deploy-worker.yml` — auto-deploys the Cloudflare Worker on pushes to `worker/**`. Uses `cloudflare/wrangler-action@v3` + `CLOUDFLARE_API_TOKEN` repo secret.
+- `.github/workflows/deploy-worker.yml` — auto-deploys **both** the production Worker (`ottofloh-api`) and the staging Worker (`ottofloh-api-staging`, via `--env staging`) on pushes to `worker/**`. Parallel jobs. Uses `cloudflare/wrangler-action@v3` + `CLOUDFLARE_API_TOKEN` repo secret.
 - `frontend/` — the live site source. `index.html`, `confirm.html`, `registration.html`, all JS/CSS, `photos/`, `crp-photos/`, `favicon.svg`, `CNAME`. Edit here, commit, push — workflow mirrors to `gh-pages`.
 - `scripts/airtable_export.py` — downloads confirmed registrations from Airtable, normalizes addresses, outputs `build/airtable_raw.csv` + `build/airtable_export.csv`.
 - `worker/index.js` — Cloudflare Worker proxying Airtable + ntfy alerts. Auto-deployed by `deploy-worker.yml` on push.
-- `worker/wrangler.toml` — public vars only (base ID, table name, allowed origin). Secrets set out-of-band via `wrangler secret put`.
-- `worker/registration.js.new` — obsolete reference template; live file is now `frontend/registration.js`. Safe to delete.
+- `worker/wrangler.toml` — public vars only. Top-level `[vars]` = production. `[env.staging]` block defines the staging worker's name + `[env.staging.vars]` holds its base ID, allowed origin, ntfy topic. Secrets set out-of-band per env via `wrangler secret put AIRTABLE_API_KEY [--env staging]`.
 - `kmz.hash` (on `gh-pages`) — see bug #1, currently stuck.

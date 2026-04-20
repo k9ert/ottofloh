@@ -1,7 +1,7 @@
 /**
  * Cloudflare Worker proxy for Airtable registration.
  * Keeps AIRTABLE_API_KEY server-side (CF secret).
- * Sends ntfy push to topic 'ottofloh_alerts' on each new registration.
+ * Sends ntfy push to env.NTFY_TOPIC on each new registration.
  *
  * Routes:
  *   POST /register  — create registration
@@ -43,8 +43,8 @@ function generateToken() {
   return Array.from(array, b => b.toString(36).padStart(2, '0')).join('').slice(0, 24);
 }
 
-async function notifyNtfy({ name, address, email }) {
-  return fetch('https://ntfy.sh/ottofloh_alerts', {
+async function notifyNtfy(env, { name, address, email }) {
+  return fetch(`https://ntfy.sh/${env.NTFY_TOPIC}`, {
     method: 'POST',
     headers: {
       'Title': 'Neue Anmeldung (unbestätigt)',
@@ -114,7 +114,7 @@ async function handleRegister(request, env, ctx) {
     return jsonResponse({ error: 'Registrierung fehlgeschlagen. Bitte versuchen Sie es später erneut.' }, 500, origin, env);
   }
 
-  ctx.waitUntil(notifyNtfy({ name, address, email }).catch(e => console.error('ntfy error:', e)));
+  ctx.waitUntil(notifyNtfy(env, { name, address, email }).catch(e => console.error('ntfy error:', e)));
 
   return jsonResponse({ ok: true, message: 'Anmeldung erfolgreich! Bitte bestätigen Sie Ihre E-Mail.' }, 200, origin, env);
 }
